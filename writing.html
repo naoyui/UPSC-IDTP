@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>UPSC Interdisciplinary Thinking Practice</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body { font-family: monospace; font-size: 13px; display: flex; zoom: 0.9; }
+
+  #sidebar {
+    width: 28%; max-width: 260px; min-width: 160px;
+    border-right: 1px solid #999;
+    display: flex; flex-direction: column;
+    overflow: hidden; background: #d8d8d8; flex-shrink: 0;
+    height: 100%;
+  }
+  #sidebar-controls { padding: 8px 10px; border-bottom: 1px solid #aaa; flex-shrink: 0; }
+  #sidebar-controls label { font-size: 13px; display: block; margin-bottom: 3px; }
+  #sidebar-controls input[type=range] { width: 100%; margin-bottom: 7px; display: block; }
+  #sidebar-controls button {
+    width: 100%; padding: 5px; font-family: monospace; font-size: 13px;
+    cursor: pointer; background: #c4c4c4; border: 1px solid #999;
+  }
+  #sidebar-controls button:hover { background: #aaa; }
+  #filter-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+  .paper-block { border-bottom: 1px solid #bbb; }
+  .paper-header { display: flex; align-items: center; gap: 6px; padding: 6px 8px; cursor: pointer; user-select: none; }
+  .paper-header:hover { background: #ccc; }
+  .paper-arrow { font-size: 10px; color: #444; flex-shrink: 0; }
+  .paper-name { font-size: 13px; font-weight: bold; color: #111; }
+  .topic-list { display: none; }
+  .topic-list.open { display: block; }
+  .topic-row { display: flex; align-items: flex-start; padding: 4px 8px 4px 18px; gap: 5px; border-bottom: 1px solid #ccc; }
+  .topic-row:last-child { border-bottom: none; }
+  .topic-row input { margin-top: 3px; flex-shrink: 0; }
+  .topic-row label { font-size: 12px; color: #222; cursor: pointer; line-height: 1.4; }
+
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; height: 100%; }
+  #map-wrap { flex: 1; overflow: hidden; padding: 10px 12px 6px 12px; min-width: 0; min-height: 0; }
+  pre#map-output { font-family: monospace; font-size: 13px; line-height: 1.5; white-space: pre; margin: 0; overflow: hidden; display: block; }
+  #bottom {
+    border-top: 1px solid #ccc; padding: 10px 16px;
+    flex-shrink: 0; background: #f9f9f9;
+    font-size: 13px; line-height: 1.9;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-controls">
+    <label>Density: <span id="density-label">40%</span></label>
+    <input type="range" id="density" min="1" max="100" value="40">
+    <button onclick="generate()">Generate</button>
+  </div>
+  <div id="filter-scroll"></div>
+</div>
+
+<div id="main">
+  <div id="map-wrap"><pre id="map-output">Press Generate.</pre></div>
+  <div id="bottom"></div>
+</div>
+
+<script>
+
+const FILTER_TOPICS = {
+  "GS1: Indian Culture": [
+    "Harappan Civilisation","Ancient Trade","Buddhism & Jainism","Bhakti Movement",
+    "Sufism","Temple Architecture","Sculpture & Art","Cave Art","Literature","Medieval Culture"
+  ],
+  "GS1: Modern History": [
+    "British Conquest","Colonial Economy","Early Nationalism","Mass Movements",
+    "Leaders & Ideologies","Partition","British Reforms","Tribal Movements","Socio-Religious Reforms"
+  ],
+  "GS1: Geography": [
+    "Geomorphology","Climatology","Oceanography","Biogeography","Human Geography","Disasters"
+  ],
+  "GS1: Society & World History": [
+    "Indian Society","Social Issues","Globalisation","World Wars","Decolonisation","Cold War"
+  ],
+  "GS2: Polity & Governance": [
+    "Constitution","Federalism","Judiciary","Parliament","Elections","Governance","International Relations"
+  ],
+  "GS3: Economy, Env & Security": [
+    "Economic Growth","Banking","Agriculture","Science & Technology","Environment","Internal Security"
+  ],
+  "GS4: Ethics": [
+    "Moral Philosophy","Emotional Intelligence","Integrity","Probity","Case Studies",
+    "Media Ethics","AI Ethics","Environmental Ethics","War Ethics","Business Ethics",
+    "Medical Ethics","Sports Ethics","Political Ethics","Social Ethics","Technology Ethics"
+  ],
+  "Sociology Optional": [
+    "Classical Thinkers","Caste System","Tribal Communities","Family & Kinship",
+    "Religion & Secularism","Urbanisation","Gender","Social Movements","Deviance","Stratification"
+  ],
+  "Essay Paper": [
+    "Philosophy & Ethics","Social Justice","Leadership","Sustainability","Democracy","Culture"
+  ]
+};
+const SUBTOPICS = {
+  "GS4: Ethics|||Moral Philosophy": [
+    "Essence of Ethics","Dimensions of Ethics","Ethics vs Morality vs Values",
+    "Indian Perspective on Ethics","Western Perspective on Ethics",
+    "Virtue Ethics","Consequentialism","Deontological Ethics",
+    "Freedom and Discipline","Duties and Rights",
+    "Ethics in Public Life","Ethics in Economic Life",
+    "Fact Value and Objectivity","Science Without Humanity",
+    "Ethics of Nudge","Individual Social Responsibility",
+    "Plato on Ethics","Aristotle on Ethics","Socrates on Ethics",
+    "Kant: Categorical Imperative","JS Mill: Utilitarianism","Bentham: Utilitarianism",
+    "Rawls: Justice as Fairness","Hobbes: Social Contract","Locke: Natural Rights",
+    "Rousseau: General Will","Hegel: Dialectics","Sartre: Existentialism",
+    "Carol Gilligan: Ethics of Care","Confucius: Moral Philosophy",
+    "Thomas Aquinas: Natural Law","David Hume: Moral Sentiment",
+    "Nietzsche: Beyond Good and Evil","Adam Smith: Moral Sentiments",
+    "Gandhi: Ethics and Satyagraha","Ambedkar: Social Justice","Radhakrishnan: Indian Philosophy",
+    "Tagore: Humanism","Vivekananda: Practical Vedanta","Aurobindo: Integral Ethics",
+    "Buddha: Ethics of Non-Violence","Raja Ram Mohan Roy: Reform Ethics",
+    "Dayanand Saraswati: Ethical Reform","Ranade: Social Ethics",
+    "Nelson Mandela: Justice and Reconciliation","Martin Luther King: Civil Rights Ethics",
+    "Dalai Lama: Compassion","Lincoln: Democratic Ethics","Kalam: Ethics in Science",
+    "Mother Teresa: Service Ethics","Wangari Maathai: Environmental Ethics",
+    "Foundational Values of Civil Services","Neutrality","Anonymity",
+    "Civil Services Accountability","Humility","Adaptability",
+    "Magnanimity","Perseverance","Impartiality and Non-Partisanship",
+    "Tolerance and Compassion","Essential Aptitude for Civil Servants",
+    "Significance of Values in Civil Services","Democratic Values",
+    "Aesthetic Values","Values in Professional Life","Role of Family in Value Education",
+    "Role of Educational Institutions in Values","Human Values and Socialisation",
+    "Fundamental and Instrumental Values",
+    "Schools of Ethics and Moral Decision-Making","Teleological vs Deontological Blend",
+    "Moral Standards: Universal vs Contextual","Religion and Moral Standards",
+    "Virtue and Knowledge: Socrates","Kant vs Nishkama Karma",
+    "Gandhi and Social Harmony","Plato Four Golden Virtues",
+    "Doctrine of Double Effect","Situation Ethics: Strengths and Weaknesses",
+    "Ethics in International Affairs: Luxury or Necessity",
+    "Means vs Ends Debate","Dignity of Human Life","Dharma in Indian Philosophy",
+    "Gandhi Trusteeship and Corporate Frauds","Ahimsa: Positive and Negative",
+    "Bose vs Gandhi on Ends and Means","Gandhi Talisman and Ethical Dilemmas",
+    "Purushartha in Indian Philosophy","Kant: Contribution and Limitations",
+    "Nishkam Karma for Civil Servants","Moral Courage","Ethical Fading",
+    "Moral Equilibrium","Ethical Pluralism","Conscience vs Consciousness",
+    "Guilt vs Remorse","Normative vs Descriptive Ethics",
+    "Moral Myopia vs Moral Muteness","Envy vs Jealousy","Gratitude vs Gratification",
+    "Values vs Virtues","Being Ethical vs Societal Acceptance",
+    "Tolerance in Secular Democracy","Ethics of War and International Relations",
+    "Digital Socialisation and Children","Selflessness as Highest Duty",
+    "Purushartha Dharma Kama Artha Moksha","Jainism: Right Knowledge Right Faith Right Conduct",
+    "Categorical Imperative as Absolute Moral Command","Compassion and Forgiveness",
+    "Moral Education and Schools","Values Acquired through Experience",
+    "EI vs IQ for Happy Life","Ethics in Public and Private Relations",
+    "Society Ethics and Moral Standards","Ethics Based on Normative Human Nature",
+    "Aristotle: Social Political Ethical Animal","Truthfulness and Truth Triumphs",
+    "Human Character in High-Tech Society","Law vs Ethics for Ordered Society",
+    "Rationality and Scientific Temper in Indian Society","Prejudiced Attitudes in India",
+    "Government Accountability to People","John Rawls Social Justice Indian Context",
+    "Governance Good Governance Ethical Governance","Environmental Ethics",
+    "Values Ethics and Professional Competence","Universal vs Eternal Human Values",
+    "EI and Ethical Decision-Making","Three Basic Civil Service Values",
+    "Law and Ethics Controlling Human Conduct","Conflict of Interest Actual vs Potential",
+    "Corruption and Core Values","Coercion vs Undue Influence Work Environment",
+    "Conscience vs Laws in Ethical Decision","Probity and Effective Governance",
+    "Moral Values and Democratic Government","Crisis of Ethical Values Narrow Perception",
+    "Resolving Ethical Dilemmas Public Administration","Public Interest Principles",
+    "AI in Administrative Decision-Making Ethics","Key Dimensions of Ethics",
+    "Just and Unjust as Contextual","Moral Integrity and Corporate Governance",
+    "Ethics in Contemporary International Aid","Moral Intuition vs Moral Reasoning",
+    "Social Media Ethical Dilemmas Digital Age","Constitutional Morality Civil Servants",
+    "Development Projects Ecologically Sensitive Areas Ethics","Good Thing Permitted Not Prohibited",
+    "Happiness as Human Aspiration","Ethics in Public Administration",
+    "Integrity without Knowledge vs Knowledge without Integrity","Humans as Ends Not Means",
+    "Attitude Formation Towards Social Problems","Poverty and Corruption Causes",
+    "Mahavira Teachings Relevance","Buddha Teachings Relevance",
+    "Guru Nanak Teachings Relevance","Social Capital and Good Governance",
+    "Amartya Sen Idea of Justice vs Rawls"
+  ],
+  "GS4: Ethics|||Emotional Intelligence": [
+    "Components of Emotional Intelligence","Self-Awareness Cluster",
+    "Self-Management Cluster","Social Awareness Cluster","Relationship Management Cluster",
+    "EI at the Workplace","EI in Civil Services","Can EI be Developed",
+    "Affective Component of Attitude","Cognitive Component of Attitude","Behavioural Component of Attitude",
+    "Attitude Formation","Impact of Beliefs on Attitude","Social Influence on Attitude",
+    "Persuasion and Moral Attitude","Political Attitude Formation",
+    "Adjustive Function of Attitude","Ego-Defensive Function","Value-Expressive Function","Knowledge Function",
+    "EI Manages Stress Transforms Distress to Eustress","EI Controls Emotions Not Controlled By Them",
+    "Social Issues and Attitude Change","Social Influence and Moral Accountability",
+    "Greed as Negative Desire Control","Adversity Quotient and Emotional Quotient",
+    "Adversity Quotient Development","Gendered Attitudes and Discrimination",
+    "Persuasion vs Coercion in Attitude Shaping","Persuasion vs Manipulation vs Propaganda",
+    "Attitude Structure and Behaviour","Why Crime Against Women Rising Attitude Change",
+    "Attitude vs Aptitude vs Empathy vs Accountability Distinctions",
+    "Mistrust Between People and Administration","Domestic Violence Acceptance Gender",
+    "Attitude and Opinion Emotions and Feelings Distinction","Political Attitude and Society",
+    "Negative Attitude Seat Belts Behaviour Change","LGBTQIA+ Negative Attitude Workplace",
+    "False Knowledge Social Media Danger","Online Bullying Motivations",
+    "Ethics Private and Public Relations","Barriers to Human Values Socialisation",
+    "Civil Service Aptitude Different","Social Influence Persuasion Attitudinal Change",
+    "Rawls Veil of Ignorance Justice","Machiavelli Politics and Morals",
+    "Practical vs Rhetorical Emotional Living","Social Norms and Moral Standards",
+    "Self-Interest vs Public Interest Prioritisation","Ethics Shaping Understanding Fake News Era",
+    "Human Inherently Moral Circumstances Make Immoral","Family Socio-Cultural Values Moral Understanding",
+    "Ethics Ideal or Practical","Prejudice Discrimination Formation and Change",
+    "Homosexuality and Indian Morality","Human Nature Selfish Ethical Conduct",
+    "Virtue Ethics Justice Courage Temperance Wisdom Character",
+    "Utilitarianism Ethical Egoism vs Altruism","Arrogance Hate Pride Destructive",
+    "Family School Society Critical Thinking Conscience","Attitude and EI Casteism Prejudice Gender",
+    "Nationalism Patriotism Strengths Limitations","Voice of Conscience",
+    "Crisis of Conscience Resolution","Five Ethical Traits Civil Servant Performance",
+    "Ten Essential Values Effective Public Servant","Digital Technology Rational Decision Debate",
+    "Innovativeness Creativity Ethics Dilemmas","Suitable Attitude for Public Servant",
+    "Crisis of Conscience and EI","Ethics Values Comprehensive National Power",
+    "Main Components EI Learnable","Positive Attitude Civil Servant Extreme Stress",
+    "Internet Cultural Values vs Traditional Values","EI in Administrative Practices",
+    "Accountability Public Service Measures","Trust Deficit Society Personal Wellbeing",
+    "Probity Public Life Difficulties","EQ vs IQ for Success Character Happiness",
+    "Objectivity Bias Civil Servant Welfare Scheme","Duty Devotion and Personal Fulfilment",
+    "Civil Servant Enabler vs Regulator","Ethical Work Culture Code of Ethics Measures",
+    "Ethical Framework for Sustainable Economic Growth"
+  ],
+  "GS4: Ethics|||Integrity": [
+    "Integrity in Public Life","Conflict of Interest in Public Policy",
+    "Patronage Appointments","Parliamentary Ethics","Judicial Ethics: Majoritarianism","Judicial Recusal Ethics",
+    "Accountability and Ethical Governance","Strengthening Ethical Values in Governance",
+    "Code of Ethics in Professions","Code of Conduct: Ministers","Code of Conduct: Civil Servants",
+    "Code of Conduct: Legislators","Code of Conduct: Judiciary","Code of Conduct: Regulators",
+    "Ethical Dilemmas in Public Institutions","Ethical Dilemmas in Private Institutions",
+    "Laws Rules and Regulations as Ethical Guidance","Moral Judgements in International Relations",
+    "Ethical Governance: Foundation of Welfare State","Ethical Governance Inclusive Responsive",
+    "Conscience and Ethical Fading Civil Servants","Value Conflicts Civil Servants",
+    "Bureaucratic Anonymity: Foundational Value","Code of Conduct Limitations vs Code of Ethics",
+    "EI for Civil Servants Personal Professional Divide","Civil Service Activism Justice Liberty",
+    "EI Inculcated in Civil Servants","Empathy Compassion Besides Objectivity",
+    "Manager vs Leader Civil Servant","Persuasion as Leadership Civil Servants",
+    "Work Culture Government vs Private Institutions","Good Governance Personal Qualities vs Laws",
+    "Weberian Bureaucracy Relevance Today","Administrative Practices Ethics Stakeholder",
+    "Internal External Pressures Ethical Decision","Kant Law vs Ethics Guilt",
+    "Ethical Management vs Management of Ethics","Negative Attitude Civil Servant Challenges",
+    "Collusive vs Coercive Corruption","Public in Public Service",
+    "Mandating CSR Antithetical to Philanthropy","Ethical Behaviour Blend Moral Mental",
+    "Legal Action vs Right Action Civil Servant","Impartiality Non-Partisanship Successful Civil Servant",
+    "Ethics Conflict Resolution Social Wellbeing","Probity Private vs Public Virtue",
+    "Citizens Charter Citizen-Centric Governance","Code of Conduct vs Code of Ethics Distinction",
+    "RTI Transparency Accountability Challenges","Morality Efficiency Public Administration",
+    "New Framework Government Work Culture Tenets","Technology Privacy Ethics Unethical Past vs Now",
+    "Tax Evasion Avoidance Legal vs Moral","Family Values Passing to Children",
+    "DMRC Values Sreedharan Intellectual Integrity","Objectivity Foundational Civil Services",
+    "Good Judgment Civil Servants Beyond Rules","Accountability vs Responsibility Without Meaning",
+    "Swami Vivekananda Living the Values Civil Services","Compassionate Capitalism Post COVID",
+    "Bureaucratic Anonymity EI Courage Conviction Selflessness Relevance",
+    "Leadership Doing Right Things Manager Doing Things Right","Righteousness Morality Conscience Civil Servant",
+    "Probity Governance Public Trust","Public Resources Utilisation Ethics",
+    "Ethical Work Culture Job Satisfaction Organisational Success","Digital Minimalism Social Media Paradox",
+    "Online Bullying Motivations Social Media","Traditional Bonds Familial Relationships Ethics",
+    "Civil Service Values Integrity Impartiality Accountability Objectivity Tolerance",
+    "Ethical Competence Beyond Law Conscience","Good Governance vs Ethical Governance",
+    "Constructive Confrontation Civil Service Values","Self-Restraint Ethics Vow-Taking",
+    "Integrity Honest Towards Yourself","Who Guards the Guardians Accountability",
+    "Political Neutrality Civil Servants Alignment","Ethical Dilemmas Private vs Government Institutions",
+    "Ethical Dimensions International Aid","National Interest vs Ethics No Global Authority",
+    "RTI Citizens Empowerment Accountability Redefined","Warren Buffet Integrity Intelligence Energy",
+    "Mission Karmayogi Civil Servants Productivity","Code of Ethics Model Integrity Probity",
+    "Gender Challenges Female Public Servants","Bharatiya Nyaya Sanhita Justice Equality Impartiality",
+    "Form vs Substance Perceptive Civil Servant","Wisdom Knowing What to Reckon With",
+    "Empathy Compassion Civil Servants Tackling Issues","Whistleblower Protection Policies",
+    "CSR Corporate Climate Environmental Responsibility","Patriotism Civil Life Everyday",
+    "Social Audit Independent Mechanism","Integrity Empowers Human Being",
+    "Impartial Non-Partisan Civil Servant Qualities","Refugees Non-Refoulement Ethical Dimension",
+    "Weber Public Administration Bureaucratic Morality","Kautilya Corruption Arthashastra",
+    "Swachh Bharat Social Influence Persuasion","RTI Accountability Not Just Empowerment",
+    "Conduct Rules and Accountable Civil Service","Bureaucratic vs Democratic Attitude",
+    "Corrupt Practices Control Effectiveness Strategies","Good Governance e-Governance Beneficiaries",
+    "Online Methodology Ethical Issues Vulnerable Sections","Rules Same Different Performance Positive Negative",
+    "Ethics Human Actions Organisational Functioning","Young People Ethics Active Politics",
+    "Integrity Test Complete Refusal Compromise","CSR Companies Profitable Sustainable",
+    "Discipline Order Subordination Counter-Productive","National Wealth Unequal Distribution",
+    "Conflict of Interest Public Sector Resolution","Law Compliance Not Enough Sensibility Ethics",
+    "Trustworthiness Fortitude Public Service","Social Values vs Economic Values Inclusive Growth",
+    "RTI Media Judicial Activism Transparency Accountability Dichotomy",
+    "Conduct Rules Vigilance RTI Corrupt Practices Evaluation",
+    "Ethics Governance Morality Civil Servant Rigidity","Public Morality Civil Services Determinant",
+    "Discretion Use Misuse Civil Servants Power","Refusal to Act Against Constitution Order",
+    "Conflict of Interest Civil Servant Expected Avoid","Fiduciary Responsibility Civil Servant Public Asset",
+    "Kautilya Arthashastra Ethics in Governance","Public Service Spirit Exemplary Impartiality",
+    "Lateral Entry Agnipath Work Culture Professional","Corruption Betrayal of Trust",
+    "Black Money Real Estate Legal vs Moral","AI Emotional Intelligence Leadership",
+    "Performance Based Incentives Civil Service Values","Civil Servant Empathy Sensitivity Steps",
+    "Social Media Civil Servants Responsibility Propriety","Three Values Moral World Better",
+    "International Funding Intention Not Fund","Moral Realism Conscientiousness Moral Absolutism Social Ethos",
+    "Social Contract State Free Services Charge","Corruption Needs vs Selfish Nature",
+    "Civil Servant Activism vs Neutrality Anonymity","Decline of Values 20th vs 21st Century",
+    "EI Positive Attitudes Civil Servants Development","Moral Professional Social Accountability",
+    "Social Norms Ethics Reciprocal Relationship","Politics Ethics Corporate Governance",
+    "Ethics Binding Force Law Morality Religion","Civil Servant Freedom of Speech Constitution",
+    "Rawls Theory of Justice Universal Fairness","Technology Amoral Intent Ethics AI Survival",
+    "Civil Servant Character Most Important Virtue","Citizens Charter RTI Social Audit e-Governance Probity",
+    "Darwin Adaptable Survival Ethics","Gandhi Sanitation More Than Independence",
+    "Natural Justice vs Natural Law Social Capital Ethics Distinctions",
+    "Truth Persuasion Credibility Governance","Media Ethics Policy Improvement",
+    "Civil Servant Negative Image Rescue","Ethics of Care Men Women Moral Values",
+    "Project Bidding Laws Probity Options","CVC Vigilance Probity Corruption"
+  ],
+  "GS4: Ethics|||Probity": [
+    "Probity in Governance","Concept of Public Service","Philosophical Basis of Governance",
+    "Information Sharing and RTI","Flaws in RTI","Importance of Vigilant Citizens",
+    "Citizen Charter: Components","Citizen Charter: Formulation",
+    "Work Culture in India","Quality of Service Delivery","Utilisation of Public Funds",
+    "Parliamentary Control on Expenditure","Corruption as a Social Evil",
+    "Corrupt Practices Among Civil Servants","Whistleblower Act",
+    "Role of Civil Society in Exposing Corruption","Tackling Corruption: Role of Institutions",
+    "Controlling Corruption: Approaches","Election Ethics","Political Ethics: Conflict of Interest",
+    "Ethics for Legislators","Transparency and Right to Information",
+    "Probity Not Guarantee Corruption-Free Governance","RTI as CAG for Citizens",
+    "Risk Taking Innovation Fear Transfers Vigilance","Governance Social Justice Social Capital",
+    "Power Corrupts Discretion Civil Servants","Whistleblowing Ethics India"
+  ],
+  "GS4: Ethics|||Case Studies": [
+    "Cattle Management Ethics","Controlled Human Infection Studies","Stray Dog Control Ethics",
+    "Paper Leaks Ethics","Cheating in Examinations","Child Artists Ethics",
+    "Credit Rating Agency Ethics","Student Suicides","Patronage Appointments Case"
+  ],
+  "GS4: Ethics|||Media Ethics": [
+    "Trial by Media","Media Prejudice","Paid News","Digital Media Ethics",
+    "Photojournalist Ethical Dilemmas","Social Media Influencing",
+    "Freedom of Speech: Social Media","Internet Shutdowns Ethics","Wokeism","Consumerism",
+    "Vigilant Media vs Tainted Media","Media Policy Ethical Conduct Public Sector",
+    "Social Media Key Ethical Dilemmas","Celebrity Endorsements Ethics",
+    "False Knowledge Social Media More Dangerous","Online Bullying Motivations"
+  ],
+  "GS4: Ethics|||AI Ethics": [
+    "AI and Human Rights","AI and Creativity","AI Ethics in Healthcare",
+    "Facial Recognition Ethics","Brain-Computer Interface Ethics",
+    "Digital Public Infrastructure Ethics","Drone Ethics","Crypto Mining Ethics","Online Gaming Ethics",
+    "AI Administrative Decision Input Ethics","Generative AI Ethics Policy",
+    "AI Ethical Implications Large Scale Use","Technology Amoral Intent Missing Link",
+    "AI vs Human Responsibility","EI and AI in Leadership",
+    "Digital Advertising Deceptive Patterns Ethics","Digital Divide Ethical Implications"
+  ],
+  "GS4: Ethics|||Environmental Ethics": [
+    "Climate Equality Ethics","Cloud Seeding Ethics","Food Choices and Climate Ethics",
+    "Climate Finance Ethics","Weaponisation of Space","Mining Ethics","Environmental Ethics",
+    "Environmental Ethics Why Study","Global Warming Human Greed Development",
+    "Corporate Sector Climate ESG Framework","Development Ecologically Sensitive Border Areas Ethics"
+  ],
+  "GS4: Ethics|||War Ethics": [
+    "War Ethics","Grey-zone Warfare Ethics","Trade War Ethics",
+    "Peacekeeping and Human Rights","Humanitarian Intervention",
+    "Economic Sanctions Ethics","Refugee Ethics","Migration Ethics",
+    "Ethics of War Purpose Relevance IR","In War Truth is First Casualty",
+    "Can War Be Ethically Justified","Russia Ukraine War Ethical Issues",
+    "Clausewitz War Continuation of Politics","Weapon Industries Prolonging Wars",
+    "Enlightened National Interest Ethics","Kissinger Moral Perfection Foreign Policy",
+    "Ethics in IR Myth or Reality","Kautilya Enemy Enemy Friend IR","Gandhi States Moral Values IR"
+  ],
+  "GS4: Ethics|||Business Ethics": [
+    "Business Ethics Principles","Corporate Governance","CSR Ethics",
+    "Gig Economy Ethics","Workers Ethics: Working Hours","Globalisation Ethics",
+    "Free Trade Ethics","What is Corporate Governance","World Bank and Corporate Governance",
+    "Corporate Governance Norms in India","Concept of Business Ethics",
+    "Ethics in International Organisations","Ethical Relations in Funding",
+    "CSR Mandatory Law vs Philanthropy Spirit","CSR Companies Profitable Sustainable",
+    "Cadbury Corporate Governance Economic Social Goals","Black Money Legal vs Moral",
+    "Kautilya Economics Ethics Consumerism Crony Capitalism",
+    "National Integrity System Ethics Infrastructure","Sanskritisation of Corruption",
+    "International Aid Ethics Domestic vs International","International Aid Conditionalities",
+    "Intention of Funding Bodies Ethical Issues"
+  ],
+  "GS4: Ethics|||Medical Ethics": [
+    "Medical Ethics: Organ Transplant","Clinical Trials Ethics","Biotechnology Ethics",
+    "Stem Cell Ethics","Cloning Ethics","Designer Babies Ethics",
+    "Reproductive Rights","Abortion Ethics","Euthanasia","Surrogacy Ethics",
+    "Animal Research Ethics","Food Adulteration Ethics","Food Safety Ethics",
+    "Genetic Manipulation Human DNA Ethics","DNA Manipulation India Stand"
+  ],
+  "GS4: Ethics|||Sports Ethics": [
+    "Sportsmanship Ethics","Doping in Sports","Sports: Discrimination and Harassment","Sports as Business"
+  ],
+  "GS4: Ethics|||Political Ethics": [
+    "Election Ethics","Parliamentary Ethics","Sedition and Ethics",
+    "Universal Declaration of Human Rights","Identity Politics and Gender Justice",
+    "Moral Policing","Sex Workers Rights","LGBTQIA+ Rights","Reproductive Rights",
+    "Young People Ethics Active Politics","Fear Corrupts Power Political Corruption",
+    "Corruption Oil or Corrode Development","UCC Law and Moral Religious Principles"
+  ],
+  "GS4: Ethics|||Social Ethics": [
+    "Student Suicides","Honour Killing","Marital Rape Ethics","Child Labour Ethics",
+    "Juvenile as Adult Ethics","Old Age Ethics","Modern Slavery","Manual Scavenging Ethics",
+    "Public vs Private Relationships","Live-In Relationships Ethics","Animal Rights Ethics",
+    "Prison Ethics","Human Values and Socialisation","Democratic Values",
+    "Aesthetic Values","Values in Professional Life","Role of Family in Value Education",
+    "Role of Educational Institutions in Values","Role of Society in Values",
+    "Abortion Ethics Multiple Perspectives","Value-Based Education Schools Contemporary Challenges",
+    "Education Kindling Flame Five Values","Patriotism Meaning Personal Conviction",
+    "Guilt Causes Management Positive Outcomes","Prejudice Stereotype Racial Discrimination",
+    "Sexual Violence Against Women Innovative Measures","Hatred and Nation Spirit",
+    "Good of Individual in Good of All","Politics and Ethics Do Not Go Together",
+    "Welfare of People Moral Obligation of State","Gender Not Determinant Moral Competence",
+    "Preservation of Human Life Ultimate Value","Ethics When Law Fails Organisation",
+    "Civil Services Suicides Aptitude Attitude","Basic Human Inalienable Values",
+    "Savitribai Phule Gender Inequality","India Caste Stereotypes Taboos Homosexuality",
+    "NEP 2020 Education Social Transformation","Scientific Mindset Contemporary Challenges",
+    "Professional Competence vs Strong Moral Values"
+  ],
+  "GS4: Ethics|||Technology Ethics": [
+    "Facial Recognition Ethics","Crypto Mining Ethics","Brain-Computer Interface Ethics",
+    "Drone Ethics","Weaponisation of Space","Online Gaming Ethics","Credit Rating Agency Ethics"
+  ],
+  "Sociology Optional|||Classical Thinkers": [
+    "Marx: Historical Materialism","Marx: Mode of Production","Marx: Alienation","Marx: Class Struggle",
+    "Durkheim: Division of Labour","Durkheim: Social Fact","Durkheim: Suicide","Durkheim: Religion",
+    "Weber: Social Action","Weber: Ideal Types","Weber: Authority and Bureaucracy","Weber: Protestant Ethic",
+    "Parsons: Social System","Parsons: Pattern Variables",
+    "Merton: Manifest and Latent Functions","Merton: Deviance and Reference Groups",
+    "Mead: Self and Identity",
+    "Max Weber: Administration","Elton Mayo: Human Relations","Peter Drucker: Management",
+    "Chester Barnard: Organisation","Mary Parker Follett: Management",
+    "Ghurye: Theoretical Pluralism","Ghurye: Indological Approach to Indian Society",
+    "Ghurye: Conception of Caste","Western vs Indological Perspectives Indian Society",
+    "Textual Perspective Indian Social System","MN Srinivas: Structural Functionalist Approach",
+    "Srinivas: Coorgs Religion and Society","Structural Functional Critique Srinivas",
+    "AR Desai: Dialectical Perspective Indian Society","AR Desai: Indian Path of Development",
+    "Limitations of Dialectical Approach Indian Society","Ranajit Guha: Subaltern Class Approach",
+    "Louis Dumont: Binary Opposition and Caste","Dumont: Homo Hierarchicus",
+    "Dumont: Ideology and Intellectualised Account","Beteille: Caste Class Power Symmetrical to Asymmetrical",
+    "Beteille: Agrarian Class Structure India","Beteille: Villages Representative Indian Civilisation",
+    "Beteille: Middle Class in India","SC Dube: Contribution Village Studies",
+    "Beteille: Tanjore Village Study","Yogendra Singh: Modernisation of Indian Tradition",
+    "Leela Dube: Seed and Earth"
+  ],
+  "Sociology Optional|||Caste System": [
+    "Caste: Ghurye Srinivas Dumont Beteille","Features of Caste System","Untouchability",
+    "Caste Conflicts","Dalit and Backward Class Movements","Agrarian Class Structure",
+    "Preventing Caste Conflicts India","Factors for Continuance of Caste System",
+    "Attributional vs Interactional Approach Caste","Changing Nature of Caste System",
+    "Ambedkar: Annihilation of Caste","Caste in Non-Hindu Religious Communities",
+    "Harmonic and Disharmonic Social Structures Beteille","Book View vs Field View Caste",
+    "Sanskritisation Modernising or Traditionalising","Ambedkar Features of Caste System",
+    "Caste System Changing Weakening Disintegrating","Annihilation of Caste Ambedkar Views",
+    "Tribe vs Caste Distinction","Forms of Untouchability Still Practised",
+    "Struggles Against Untouchability Gandhi to Ambedkar","Caste Politics Identity Dynamics",
+    "Caste Conflicts Between Adjacent Castes","Caste and Class Extreme Poor",
+    "Casteism Modern Edition of Caste","Caste in Political Mobilisation India",
+    "Social Bases Political Mobilisation Independent India"
+  ],
+  "Sociology Optional|||Tribal Communities": [
+    "Tribal Communities: Definition and Spread","Colonial Policies and Tribes","Tribal Integration and Autonomy",
+    "Definitional Problems Identifying Tribes India","Obstacles to Tribal Development",
+    "Colonial Policies Tribes Socio-Economic Conditions","Isolation Assimilation Integration Tribal Development",
+    "Colonial Policy Segregation Tribes GoI Act 1935","Particularly Vulnerable Tribal Groups PVTGs",
+    "Challenges of Integration Tribal Communities","Ghurye vs Elwin Debate Tribal Development",
+    "Tribal Assertion Autonomy India","Ethno-Nationalism Tribal Discontent India",
+    "Development-Induced Displacement Tribal Uprisings","Tribal Question Integration Autonomy Modern India",
+    "Verrier Elwin Views Freedom Tribals","Integration vs Autonomy Tribes Views",
+    "Environmental Movement Development Tribal Identity Trilogy"
+  ],
+  "Sociology Optional|||Family & Kinship": [
+    "Family Household and Marriage","Types of Family","Lineage and Descent",
+    "Patriarchy and Sexual Division of Labour","Contemporary Family Trends",
+    "Kinship Systems in India","Family and Marriage in India","Household Dimensions",
+    "Patriarchy and Entitlements in India",
+    "Descent and Alliance Concepts","North vs South Indian Kinship Systems",
+    "Lineage and Descent Conceptual Issues India","Family Bonds and Changing Kinship Patterns",
+    "Changing Marriage Patterns Implications","Market and Modern Forces Marriage India",
+    "Changing Family Structure India","Kanyadan and Kulabadhu Marriage Family",
+    "Household vs Family Distinction Joint Family Disintegration",
+    "Hierarchy to Differentiation Indian Society","Patriarchy Key to Inequalities India",
+    "Patriarchy and Honour Killing India","Material Basis of Patriarchy Ideological System",
+    "Patriarchy Definition Womens Entitlements Indian Family","Changing Status Women Urban India",
+    "Patriarchy and Child Socialisation India","Social Cultural Determinants Sexual Division Labour"
+  ],
+  "Sociology Optional|||Religion & Secularism": [
+    "Theories of Religion","Animism Monism and Pluralism","Sects and Cults",
+    "Religion and Science","Secularisation","Religious Revivalism and Fundamentalism",
+    "Religious Communities in India","Religious Minorities","Communalism and Religious Revivalism",
+    "Religious Communities Cultural Diversity India","Cultural Pluralism Unity in Diversity India",
+    "Cultural Pluralism Multi-Religious Society","Growth of Religious Sects India",
+    "Islam as Practised in India Changes Over Time","Problems Religious Minorities India",
+    "Minority Question Violence Discrimination India","Majoritarianism Minoritarianism Communal Tensions",
+    "Secularism vs Secularization Nature Contemporary India","Religion in Public Personal Spheres Secularization Thesis",
+    "Different Understandings Secularization India","Nation Building Role of Religion",
+    "Cultural Revivalism Performing Arts Language Crafts","Communalism Undermining Democracy India",
+    "Ethnocentrism Rising Conflict India","Social Media Communal Polarisation"
+  ],
+  "Sociology Optional|||Urbanisation": [
+    "Urban Growth in India","Urban Slums and Deprivation","Informal Sector and Child Labour",
+    "Industrialisation in India","Working Class: Structure and Mobilisation",
+    "Industrial Class Structure Social Structure India","Changes in Industrial Class Structure India",
+    "Changing Nature Industrial Working Class","New Middle Class India vs Old Middle Class",
+    "Middle Class Role Democracy Development India","Growth Consolidation Middle Classes Modern India",
+    "Working Class Problems Informal Sector","Labour Migration and Informal Sector India",
+    "Bonded Labour Continuance India","Rural Bondage Social Reality",
+    "Reverse Migration Pandemic Sociological Reasons","Farmer Suicide Indebtedness",
+    "Trend of Urbanisation India Industrialisation Precondition","Urbanism as Way of Life India",
+    "Urban Settlements Rural Caste Kinship Imprints","Urban Slums Sites Social Exclusion",
+    "Slums Manifestations Industrialisation Urbanisation","Different Forms Deprivation Slums",
+    "Child Labour Law Abolition India","Measures to Curb Child Labour India",
+    "Child Labour Causes State Policies","Globalisation Impact Workers Informal Sector",
+    "Growth of Informal Sector India","Problems Labour Migrants Informal Sectors States",
+    "Decline of Village Industries India","Village Industries Rural Economy"
+  ],
+  "Sociology Optional|||Gender": [
+    "Gender and Stratification","Patriarchy and Sexual Division of Labour",
+    "Womens Movement","Violence Against Women",
+    "Legal Provisions Effectiveness Violence Against Women","Economic Empowerment Women Substantive Empowerment",
+    "POSH Act Workplace Harassment Women","Violence Against Women Public Domain Reasons",
+    "Social Changes Violence Against Women Emerging Forms","Me Too Movement Impact India",
+    "Women Movement State Policy Gender Equality Challenges","Post 1970 Feminist Movement Indian Middle Class",
+    "Second Wave Women Movement India","Constitutional Provisions Women Uplift",
+    "Law as Instrument Womens Empowerment","Women Reproductive Health Challenges India",
+    "Feminisation of Poverty","Leela Dube Seed and Earth",
+    "Social Reform Movement Uplifting Women Status"
+  ],
+  "Sociology Optional|||Social Movements": [
+    "Peasants and Farmers Movements","Dalit and Backward Class Movements",
+    "Environmental Movements","Ethnicity and Identity Movements",
+    "Protest Movements and Revolution","Colonial Movements and Reforms",
+    "Dalit Political Mobilisation Democracy India","Social Democracy Precondition Political Democracy",
+    "Citizenship Issues Contemporary India","Media Fourth Pillar of Democracy",
+    "Constitutional Morality Ambedkar","Pressure Groups Decision-Making India",
+    "Changing Nature Political Elites India","Pressure Groups Strengthening Democracy",
+    "Identity Politics Dalit Movements India","Regionalism Decentralisation Power",
+    "Dalit Movements Identity Formation India","Social Historical Origins Dalit Movements",
+    "Issues Involved Dalit Movements India","Dynamics Contemporary Dalit Movements",
+    "Social Media Mass Mobilization India","Ethnicity Factors Ethnic Movements India",
+    "Social Movements Opportunity Structures Media","LGBTQ Marriage Rights Issues",
+    "Transgender Entitlements Indian Society","Ethnic Identity Movements Resurgence India",
+    "Chipko Movement Eco-Feminism Gandhian Tone","Environmental Movements Anthropogenic Climate India",
+    "Various Forms Environmental Movements India","Tradition Modernity Antithetical",
+    "Orthogenetic Changes Indian Society","Indian Traditions Modernising Factors",
+    "Socio-Religious Movements Colonial Rule Hinduism","Anti-Brahmanical Movements Colonial Period",
+    "Satya Shodhak Movement Jyotiba Phule","Banning Sati Social Evil Colonial India",
+    "Gandhi Moralist Ascetic Man of Action Hind Swaraj","Westernisation Institutional Changes India",
+    "British Reforms Economic System Disruption India","Social Background Indian Nationalism",
+    "Colonial Administrators Traditionalism Constructed","Marxist Approach Indian Nationalism",
+    "Tebhaga Movement Peasant Struggle India","Champaran Peasant Movement Colonial India",
+    "Farmers Movement India Recent Assessment","Rural Unrest Contemporary India",
+    "Contemporary Farmers Movements Changing Course","Movements for Separate States Sociological Aspects"
+  ],
+  "Sociology Optional|||Deviance": [
+    "Merton: Deviance and Reference Groups","Poverty and Deprivation",
+    "Illiteracy and Education Disparities","Displacement and Sustainability","Poverty and Inequality in India",
+    "Development Planning India Relevance","Decentralisation Power Democracy Roots",
+    "Idea of Development Planning India","NEP 2020 Education Panacea Ills Evils",
+    "Education Key Social Development","NEP 2020 Salient Features",
+    "Education Socio-Economic Disparities System","Cooperative Movements Challenges India",
+    "Cooperatives Poverty Alleviation Rural India","Sustainable Development India Environmental Issues",
+    "Sustainability Livelihood vs Environmental Protection","Rural Urban Continuum",
+    "Development-Induced Displacement Case Studies","Displacement Inherent Idea of Development",
+    "Forced Displacement Deprivation Inequalities","Chronic Malnutrition India Consequences Remedies",
+    "Emerging Forms Inequalities Acute Poverty Social Transformation","Poverty Deprivation Inequality Interlinkages",
+    "Constitutional Provisions SC ST Socio-Economic Political","Government Schemes Poverty Alleviation SDG 2015"
+  ],
+  "Sociology Optional|||Stratification": [
+    "Equality and Inequality","Hierarchy and Exclusion",
+    "Functionalist Stratification Theory","Marxist Stratification Theory","Weberian Stratification Theory",
+    "Class Status and Power","Ethnicity Race and Stratification","Social Mobility: Types and Sources",
+    "Agrarian Class Structure Inequalities India","Land Reforms Post-Independent India Features",
+    "Land Reforms Agrarian Transformation","Land Reform Acts Effectiveness Rural Inequality",
+    "Agrarian Class Structure Modern Forces Changes","Green Revolution Victory Narratives Critique",
+    "Green Revolution New Power Elite Rural India","Technology Agrarian Change India",
+    "Land Transfer Cultivating to Non-Cultivating Owners","Inequalities Agrarian Social Structure India",
+    "Village Studies Pioneer Indian Sociology","Decade 1950s Golden Period Village Studies",
+    "Challenges Village Studies India","Little Republics India Villages Critique",
+    "Indian Rural Society Faction-Ridden","Idea of Indian Village",
+    "Book View Field View Indian Sociology","Sex Ratio Regional Variations India",
+    "Socio-Cultural Factors Skewed Sex Ratio India","DEMARU States Low Female Sex Ratio",
+    "Ageing Emerging Issue India Problems Old-Age","Active Ageing Global Goal Gendered Caregiving",
+    "Child Abuse Increasing Trend India","Private Public Networks Aged India",
+    "National Population Policy 2000 Goals Achievements","Reverse Migration Features Causes Consequences",
+    "Male Migration Birth Rate Sex Ratio","Same-Sex Marriages Population Dynamics India",
+    "Population Ecology Environment India","Infant Mortality Rate Development Index",
+    "Davis Blake Fertility Social Structure"
+  ],
+  "Essay Paper|||Philosophy & Ethics": [
+    "Truth Knows No Color","Best Lessons Learnt Through Bitter Experiences",
+    "Contentment is Natural Wealth Luxury Artificial Poverty",
+    "There is No Path to Happiness Happiness is the Path",
+    "Nearly All Men Can Stand Adversity Test Character Give Power",
+    "Society with More Justice Needs Less Charity",
+    "Life Long Journey Between Human Being and Being Humane",
+    "Mindful Manifesto Catalyst to Tranquil Self",
+    "The Real is Rational and Rational is Real","Philosophy of Wantlessness vs Materialism Chimera",
+    "Simplicity is the Ultimate Sophistication",
+    "Social Justice Without Economic Prosperity Meaningless",
+    "Choice Does Not Mean Any Option Has to Be Right"
+  ],
+  "Essay Paper|||Social Justice": [
+    "Girls Weighed Down by Restrictions Boys with Demands",
+    "Hand That Rocks the Cradle Rules the World",
+    "Patriarchy Least Noticed Most Significant Structure Social Inequality",
+    "Culture is What We Are Civilization is What We Have",
+    "History Repeats Itself First as Tragedy Second as Farce",
+    "History Series of Victories Scientific Man Over Romantic Man",
+    "There Can Be No Social Justice Without Economic Prosperity"
+  ],
+  "Essay Paper|||Leadership": [
+    "The Supreme Art of War is to Subdue Enemy Without Fighting",
+    "All Ideas Having Large Consequences are Always Simple",
+    "The Cost of Being Wrong is Less Than the Cost of Doing Nothing",
+    "The Time to Repair the Roof is When the Sun is Shining",
+    "There Are Better Practices to Best Practices",
+    "What is Research But a Blind Date with Knowledge",
+    "Technology as the Silent Factor in International Relations"
+  ],
+  "Essay Paper|||Sustainability": [
+    "Forests Precede Civilizations and Deserts Follow Them",
+    "Forests Are the Best Case Studies for Economic Excellence"
+  ],
+  "Essay Paper|||Democracy": [
+    "Thought Finds a World and Creates One Also",
+    "The Years Teach Much Which the Days Never Know",
+    "It is Best to See Life as a Journey Not as a Destination",
+    "The Doubter is a True Man of Science",
+    "Thinking is Like a Game it Does Not Begin Without Opposite Team",
+    "Not All Who Wander Are Lost",
+    "Inspiration for Creativity Springs from Looking for Magical in Mundane",
+    "Process of Self-Discovery Has Been Technologically Outsourced",
+    "Your Perception of Me is Reflection of You My Reaction Awareness of Me",
+    "Ships Do Not Sink Because of Water Around Them",
+    "You Cannot Step Twice in the Same River",
+    "A Smile is the Chosen Vehicle for All Ambiguities",
+    "Visionary Decision-Making at Intersection of Intuition and Logic"
+  ],
+  "Essay Paper|||Culture": [
+    "The Empires of the Future Will Be the Empires of the Mind",
+    "Social Media Triggering Fear of Missing Out Depression Loneliness Youth",
+    "Mathematics is the Music of Reason",
+    "Education is What Remains After One Has Forgotten What Was Learned",
+    "Poets are the Unacknowledged Legislators of the World",
+    "A Ship in Harbour is Safe But That is Not What a Ship is For",
+    "Muddy Water is Best Cleared by Leaving It Alone"
+  ],
+  "GS3: Economy, Env & Security|||Disasters": [
+    "Types of Disasters","India Vulnerability Profile",
+    "Earthquakes","Tsunamis","Landslides","Floods","Drought","Epidemics",
+    "Nuclear Reactor Explosion","Dam Collapse","Gas Leakage","Oil Spill","Volcanic Eruption","Forest Fires",
+    "Chemical Spills","Hazardous Material Spills","Explosives","Chemical and Biological Attacks","Nuclear Blasts",
+    "Rail and Airline Accidents","Groundwater Poisoning",
+    "Disaster Management Cycle","Community Disaster Management",
+    "National Disaster Management Act 2005","Sendai Framework for DRR",
+    "Global Framework for Disaster Risk Reduction","Disaster Insurance",
+    "Media in Disaster Management","Gender and Disasters","Role of NGOs in Disasters",
+    "NDRF App","Early Warning Systems","AI and GIS in Disaster Management",
+    "Satellite Monitoring for Disasters","Science and Technology in DM",
+    "Pandemic Preparedness Fund","Disaster Induced Displacement",
+    "Urban Flood Management","Disaster Risk Financing G20",
+    "India Climate Vulnerability and Preparedness","Atmanirbharta in Disaster Management",
+    "Joshimath Crisis","PM Ten Point Agenda on DRR",
+    "CDRI Disaster Resilience","National Policy on Disaster Management","NDMP Update"
+  ],
+  "GS3: Economy, Env & Security|||Internal Security": [
+    "Social Diversity as Security Issue","Challenges from Neighbours",
+    "Non-State Actors and Security","Global Vulnerability Indices",
+    "Law and Order vs Internal Security","Terrorism in India","Changing Face of Terrorism",
+    "Intelligence Infrastructure Drawbacks","Organized Crime Types",
+    "Drug Trafficking in India","Terrorism and Organized Crime Nexus",
+    "Extremism and Development Linkage","Naxal Movement","Naxalism and COVID-19",
+    "Naxalism as Internal Security Threat","Insurgency in North-East",
+    "Assam Insurgency","Bodo Issue Resolution",
+    "Border Management Challenges","Community Participation in Border Management",
+    "Cyber Crimes","Ransomware","Cyber Warfare","National Cyber Security Policy 2013",
+    "India Cyber Security Infrastructure","Social Media and Internal Security",
+    "Social Media Regulation for Security","AI in Monitoring Social Media",
+    "Money Laundering","Black Money in India","Parallel Economy","Demonetisation Impact",
+    "Police Reforms in India","Police Structure and Duties","Centre Role in Policing",
+    "Traditional vs Non-Traditional Security","Paramilitary Forces Issues",
+    "Assam Rifles","BSF","ITBP","CISF","CRPF","NSG",
+    "Integrated Theatre Commands","National Maritime Security Coordinator",
+    "India-China Border Tensions: Galwan","India-Pakistan LoC Ceasefire",
+    "Indo-Pacific and Quad","Illegal Immigration and Demographic Inversion",
+    "Bijapur Attack Chhattisgarh","J&K Post Article 370","Reasi Attack",
+    "Communal Tensions","Drug-Terror Nexus","Geospatial Data and Security",
+    "Anti-Maritime Piracy Act","National Cyber Security Strategy 2021",
+    "Pegasus Spyware","Ransomware-Akira","Deepfakes and Social Trust",
+    "Counter-Terrorism Measures","FATF and Terrorism Financing",
+    "Indigenisation of Defence","S-400 Triumf","Tejas Mk1A",
+    "Maritime Security: IOR","Quad Security Dialogues","Naval Anti-Piracy Operations",
+    "Drone Attacks on Merchant Vessels","Space Security",
+    "Biological Warfare Preparedness","Chemical Weapon Compliance",
+    "RAW, IB and NIA Roles","NSA Applications","UAPA Amendments",
+    "Personal Data Protection and Security","Gaganyaan and Space Security"
+  ],
+  "GS3: Economy, Env & Security|||Environment": [
+    "Regenerative Blue Economy","NABARD Climate Strategy 2030",
+    "Plastic Waste Management Rules 2024","Human-Animal Conflict",
+    "Wildlife Licensing Rules 2024","EU Carbon Border Tax","Greenwashing",
+    "Climate Change Performance Index 2024","IEA Coal 2023 Report",
+    "Battery Waste Management Rules 2022","EIA for Himalayan Region",
+    "Biological Diversity Amendment Bill 2021","Brazzaville Declaration",
+    "Recovery of Ozone Layer","KAZA Summit 2024",
+    "Paris Agreement Climate Finance Target","UN Forum on Forests",
+    "World Wildlife Crime Report 2024","State of Climate in Asia 2023",
+    "Green Credit Program","Kunming-Montreal GBF","Climate Finance Road to COP29",
+    "Global E-waste Monitor 2024","Global Methane Tracker 2024",
+    "WMO State of Global Climate 2023","World Air Quality Report 2023",
+    "IPCC Reports and Equity","Unjust Climate: FAO","CMS COP14",
+    "Emissions Gap Report 2023 UNEP","Bonn Climate Meet",
+    "Turtle Conservation","Tiger Conservation","Artificial Reefs",
+    "Sundarbans Fragile Ecosystem","Market-Based Forest Conservation",
+    "Constructed Wetlands","Vultures at Risk in India",
+    "Great Indian Bustard Conservation","Invasive Alien Species",
+    "India Soil Erosion Crisis","Forest Fires in India",
+    "Leopards Status in India 2022","Himalayan Wolf IUCN Assessment",
+    "Project Cheetah One Year","Mangrove Ecosystems IUCN Report",
+    "Coral Bleaching Great Barrier Reef","Marine Heatwaves Arctic Ocean",
+    "Coastal Erosion and Ecosystem","Deoxygenation in Riverine Ecosystems",
+    "El Nino Impact on Lakes","Biodiversity Loss",
+    "Rising Pollution in Indian Rivers","Air Pollution Control India",
+    "Groundwater Contamination India","Plastic Waste in Indian Himalayas",
+    "Single-Use Plastics India","Nitrogen Pollution","Radioactive Discharges Nuclear Plants",
+    "Acid Rain Impact","India Coal Plants SO2 Emissions","GRAP Stage IV NCR",
+    "Metal Mining Pollution","E-Waste Management India",
+    "Plastic Waste to Fuel","Declining Green Cover Cauvery Basin",
+    "Green Industrialisation","Amazon Forest Fire Global Impact",
+    "Desertification Challenges","Biomass Cultivation on Degraded Land",
+    "Mining in Aravalli Range","Carbon Farming Sustainable Agriculture",
+    "Electric Mobility India","Water Crisis in Urban India",
+    "Land Management Sustainable Development","Green Energy Transition India",
+    "Green Hydrogen Roadmap India","BioCNG India",
+    "Climate Engineering Risks","CCUS Policy Framework NITI Aayog",
+    "Ammonia as Automotive Fuel","SC on Kumaon Himalaya Projects",
+    "Microplastics Impact","Solid Waste Management","Solar Waste Management",
+    "Illegal Sand Mining","Climate Migration","Pest Attack on Crops",
+    "Anthropocene","Manufactured Sand","Rising Global Temperatures",
+    "Human Rights and Environment","Indigenous Tribes and GBF"
+  ],
+  "GS1: Geography|||Disasters": [
+    "Earthquakes","Tsunamis","Landslides","Floods","Drought","Cyclones","Volcanic Eruption",
+    "India Disaster Vulnerability","Disaster Risk Reduction","Sendai Framework"
+  ],
+  "GS1: Indian Culture|||Harappan Civilisation": [
+    "Harappan Town Planning","Harappan Trade","Harappan Agriculture","Harappan Crafts",
+    "Harappan Script and Language","Harappan Society","Harappan Religion",
+    "Harappan Art and Architecture","Harappan Burial System","Decline of Harappan Culture",
+    "Seals of Indus Valley","Prehistoric Stone Age Cultures","Palaeolithic Age",
+    "Mesolithic Age","Neolithic Age","Chalcolithic Age","Iron Age and its Impact",
+    "Vedic Society","Rig Vedic to Later Vedic Period Changes","Vedic Economy","Vedic Polity",
+    "Varna System","Vedic Religion and Thought","Sixteen Mahajanapadas",
+    "Rise of Urban Centres","Evolution of Coins","Growth of Jainism","Growth of Buddhism",
+    "Dholavira Site","Nalanda as Academic Heritage","Harappan Urbanisation and Agriculture",
+    "Indus Valley and Modern Urbanisation","Taxila University"
+  ],
+  "GS1: Indian Culture|||Ancient Trade": [
+    "Harappan Foreign Trade","India-Roman Empire Contacts","Silk Route Trade",
+    "Satavahana Commercial Contacts","Post-Mauryan Trade","Gupta Era Trade",
+    "Sangam Period Economy","India-Southeast Asia Trade","Medieval Inland Trade",
+    "Mughal Overseas Trade","Trade as Cultural Exchange","Modes of Indian Culture Spread Abroad"
+  ],
+  "GS1: Indian Culture|||Buddhism & Jainism": [
+    "Growth of Buddhism","Buddhist Schools","Ashoka and Buddhism","Spread of Buddhism Abroad",
+    "Kanishka and Buddhism","Growth of Jainism","Jain Sculptures","Jain Philosophy",
+    "Heterodox Sects: Ajivikas","Rise of Heterodox Sects",
+    "Buddhism vs Jainism Comparison","Decline of Buddhism","Brahmanism vs Buddhism",
+    "Buddhist Symbolic Language and Animal Symbols","Stupa Art and Architecture",
+    "Sanchi Stupa","Buddhist Architecture Contribution","Pala Period and Buddhism",
+    "Early Buddhist Stupa-Art and Folk Motifs"
+  ],
+  "GS1: Indian Culture|||Bhakti Movement": [
+    "Bhakti Movement","Vaishnava Acharyas","Saints of Bhakti Movement","Maharashtra Dharma",
+    "Bhakti and Social Reform","Brahmo Samaj","Ramakrishna Mission",
+    "Socio-Religious Reform Movements 19th Century",
+    "Bhakti Literature in Vernacular Languages","Bhakti and Pluralism",
+    "Bhakti and Communal Harmony","Sri Chaitanya Mahaprabhu","Bhakti in South India",
+    "Bhakti vs Social Structure","Young Bengal Movement","Jotirao Phule and Subaltern Reform"
+  ],
+  "GS1: Indian Culture|||Sufism": [
+    "Sufism","Sufi Orders in India","Sufi Philosophy","Sufism and Bhakti Synthesis",
+    "Sufism Roots in Indian Subcontinent","Limitations of Sufi Movement",
+    "Sufism and Religious Tolerance","Sufi Impact on Akbar","Sufism and Social Harmony",
+    "Sufis and Medieval Society: Extent of Impact"
+  ],
+  "GS1: Indian Culture|||Temple Architecture": [
+    "Mauryan Architecture","Post-Mauryan Architecture","Gupta Period Architecture",
+    "Pallava Architecture","Chola Architecture","Pandya Temples","Vijayanagar Architecture",
+    "Temples of Khajuraho","Temples of Odisha","Hoysala Style","Vesara Style",
+    "Rashtrakuta Architecture","Nayaka Temples","Temples of Kerala",
+    "Indo-Islamic Architecture","Mughal Architecture","Sikh Architecture",
+    "Rajput Architecture","Indo-Saracenic Architecture","Harappan Architecture",
+    "Dravidian Temple Architecture Evolution","Pallava to Chola Architecture",
+    "Temples as Socio-Economic Centres","Hoysala Kingdom Temple Architecture",
+    "Vijayanagar Syncretic Style","Vijayanagar and Indo-Islamic Elements",
+    "Hampi: City Served in Stone","Vaishnavism and Shaivism in Medieval India",
+    "Dogra Architecture","Chandella Art and Sculpture","Geographical Factors in Architecture",
+    "Akbar Religious Syncretism"
+  ],
+  "GS1: Indian Culture|||Sculpture & Art": [
+    "Harappan Sculpture","Mauryan Sculpture","Post-Mauryan Sculpture",
+    "Gandhara School","Mathura School","Amravati School","Gupta Sculpture",
+    "Medieval Sculpture","Mural Painting Tradition","Miniature Painting Tradition",
+    "Rajput School of Painting","Pahari School of Painting","Deccan Paintings",
+    "Regional Paintings","Modern Indian Sculpture","Bronze Art Tradition",
+    "Panamalai Paintings","Cheriyal Scroll Painting","Mewar School of Painting",
+    "Pottery: OCP BRW PGW NBPW","Coinage of India","Devadasi Tradition",
+    "Gandhara: Roman and Greek Influence","Chola Bronze Sculptures",
+    "Ajanta Murals as Social Mirror","Ajanta Caves Conservation Challenges",
+    "Mauryan Pillars: Imitation or Innovation","Indian Sculpture: Religious and Technical",
+    "Gupta Numismatic Art","Medieval Temple Sculptures and Social Life",
+    "Gupta and Chola Contributions to Heritage","Lion and Bull Figures in Indian Art",
+    "Modern Indian Art under Colonial Rule","Traditional Handicrafts Conservation",
+    "Vijayanagar Contributions to Art","Safeguarding Indian Art Heritage",
+    "Tribal Art and Cultural Insights","Mesolithic Rock Art and Aesthetic Sense"
+  ],
+  "GS1: Indian Culture|||Cave Art": [
+    "Cave Art and Architecture","Prehistoric Paintings and Potteries","Ajanta Caves",
+    "Ellora Caves","Rock-cut Architecture","Ashoka Inscriptions and Sites",
+    "Cave Paintings as Historical Sources","Climate Change and Rock Art Degradation",
+    "Cave Paintings: Religious and Secular","Structural Engineering in Cave Architecture"
+  ],
+  "GS1: Indian Culture|||Literature": [
+    "Sanskrit Literature","Pali Literature","Prakrit Literature","Tamil Literature",
+    "Telugu Literature","Malayalam Literature","Kannada Literature","Bengali Literature",
+    "Hindi Literature","Urdu Literature","Persian Literature","Sangam Literature",
+    "Vedic Texts and Upanishads","Arthashastra","Megasthenes","Gilgit Manuscripts",
+    "Ol Chiki Script",
+    "Sangam Literature: Political and Socio-Economic Insights","Vedic Literature and Society",
+    "Indian Vernacular Literature and Regional Identity","Endangered Languages in India",
+    "Ahom Kingdom and Northeast Cultural Identity","Hindustani vs Carnatic Music",
+    "Persian Literary Sources of Medieval India","Sangam Literature as Historical Source"
+  ],
+  "GS1: Indian Culture|||Medieval Culture": [
+    "Mughal Cultural Contributions","Deccani States Culture","Regional Kingdoms Cultural History",
+    "Music in India","Classical Dance Forms","Folk Dances","Indian Theatre",
+    "Indian Cinema History","Indian Puppetry","Religions in India","Philosophy in India",
+    "Indian Handicrafts","Fairs and Festivals","Indian Universities",
+    "UNESCO Cultural Heritage India","Nataraja Statue and Sengol",
+    "Adi Shankaracharya and Philosophy","Upanishads",
+    "Delhi Sultanate: Indo-Persian Culture","Delhi Sultanate: Language and Architecture",
+    "Gupta Period: Science and Technology","Ancient Indian Schools of Philosophy",
+    "Vasudeva Kutumbakam and Indian Values","Step Wells: Architecture and Water Solutions",
+    "Traditional Medicine Systems in India","Classical Dance Evolution",
+    "Traditional Theatre Forms of India","Numismatics and Historical Sources",
+    "European Travellers Accounts Medieval India","Chinese and Arab Travellers Accounts",
+    "Gupta Period: Rise and Decline of Art","Krishnadeva Raya as Patron of Learning",
+    "Vijayanagar Empire: Art and Architecture","Taxila vs Nalanda",
+    "Gupta Golden Age: Science and Technology","India Ancient Civilisation Continuity",
+    "Pallavas: Art and Literature of South India","Chola Achievements in Art and Architecture",
+    "Geographical Factors in Ancient India Development"
+  ],
+  "GS1: Modern History|||British Conquest": [
+    "Advent of Europeans in India","Carnatic Wars","Battle of Plassey and Buxar",
+    "Anglo-Mysore War","Anglo-Punjab War","British Administration before 1857",
+    "Later Mughals and Decline","Regional Powers 18th Century","Arab Conquest of Sindh",
+    "Mahmud of Ghazni","Muhammad Ghori","Delhi Sultanate Overview",
+    "British Conquest 1757 to 1856","Battle of Plassey: World Impact",
+    "Fragmented Polity Mid-18th Century","Lord Lytton and Lord Ripon Viceroyalty",
+    "Lord Ripon: Liberal Tradition vs Colonial Bureaucracy",
+    "Lord Curzon Policies and Nationalism","Lord Dalhousie and Modernisation",
+    "Lord William Bentinck Reforms","Why Indian Rulers Failed Against Foreign Invaders",
+    "British East India Company: Indian Soldiers Effectiveness"
+  ],
+  "GS1: Modern History|||Colonial Economy": [
+    "British Economic Policy","Land Revenue Systems","Zamindari System",
+    "Ryotwari System","Mahalwari System","Deindustrialisation","Drain of Wealth",
+    "Commercialisation of Agriculture","Railways under British","Press and Education British Period",
+    "Colonial Policies and Famines","British Agriculture and Peasant Resistance",
+    "East India Company and Commercialisation of Agriculture","Colonial Forest Policies",
+    "British Rule and Modernisation: Extent","British Education and Political Consciousness",
+    "British Education: 19th Century","Judicial Reforms: Cornwallis","Rule of Law under British",
+    "Decline of Traditional Artisanal Industry","Decline of Handicrafts and Cottage Industries",
+    "Colonial Economic Policies: Critical Examination","Indentured Labour and Cultural Identity",
+    "Industrial Revolution and Indian Handicrafts"
+  ],
+  "GS1: Modern History|||Early Nationalism": [
+    "Pre-Congress Organisations","Indian National Movement 1858-1905",
+    "Early Nationalists","Swadeshi Movement","Government of India Act 1909",
+    "Home Rule League","Indian Renaissance","Socio-Religious Movements",
+    "Growth of Indian National Movement","Early Nationalists Contributions",
+    "Moderates vs Extremists","Birth of Indian National Congress 1885",
+    "Indian National Movement: Goals of Swaraj","Lucknow Pact 1916",
+    "Nationalism and Communalism: Parallel Development",
+    "Working Class and Nationalist Movement","Moderates: Failure to Convince Nation",
+    "Role of Moderates in Preparing for Freedom Movement",
+    "Democratic Practices During Freedom Struggle","INC and Safety Valve Theory"
+  ],
+  "GS1: Modern History|||Mass Movements": [
+    "Khilafat and Non-Cooperation Movement","Civil Disobedience Movement",
+    "Quit India Movement","Round Table Conferences","Poona Pact",
+    "Simon Commission","Nehru Report 1928","Individual Satyagraha 1940-41",
+    "2nd World War and Nationalist Response","Tribal Movements British Period",
+    "Peasants Movements British Period","Working Class Movement","Civil Rebellions British Period",
+    "Non-Cooperation Movement: Democratisation and Limits",
+    "Non-Cooperation Movement: New Direction","Civil Disobedience 1930-34: Unique Character",
+    "Dandi March and Salt Satyagraha","Jallianwala Bagh Massacre",
+    "Quit India Movement: Domestic and Global Context",
+    "Indian Capitalists and Civil Disobedience","WWI and Indian Mass Mobilisation",
+    "Peasant Awakening in 1930s","Khilafat-NCM Alliance and Impact",
+    "Revolt of 1857: Watershed in British Policy","Revolt of 1857: Nature and Consequences",
+    "Naval Mutiny and British Colonial End","Bhoodan and Gramdan Movements",
+    "Jai Jawan Jai Kisan Jai Vigyan"
+  ],
+  "GS1: Modern History|||Leaders & Ideologies": [
+    "Emergence of Gandhi as Mass Leader","Revolutionary Terrorism Phase II",
+    "Swaraj Party","Left and Communist Trends","Role of Women in Freedom Struggle",
+    "Growth of Communalism","Important Congress Sessions",
+    "Gandhi vs Nehru: Differences and Similarities","Gandhi vs Tagore: Education and Nationalism",
+    "Gandhi vs Ambedkar: Dalit Rights","Gandhi vs Bose: Approach to Independence",
+    "Subhash Chandra Bose Contribution","Revolutionary Movement 1920s-1930s",
+    "Bhagat Singh Contribution","Swami Vivekananda Chicago Speech",
+    "Ambedkar: Beyond Dalit Rights","Sardar Patel: Pre and Post Independence",
+    "Sardar Patel and Bismarck Comparison","Northeast Contributions to Independence",
+    "Erosion of Myth of British Benevolence","Gandhi: Significance in Present Times",
+    "Women in Freedom Struggle: Gandhian Phase","Women Question in 19th Century Reform",
+    "Foreign Participants in Indian Freedom Struggle"
+  ],
+  "GS1: Modern History|||Partition": [
+    "Partition of India","Wavell Plan","Cabinet Mission Plan","Mountbatten Plan",
+    "Rise of Communalism","Rehabilitation of Refugees","Problems with J&K Hyderabad Junagarh",
+    "Accession of Sikkim","Accession of French and Portuguese States",
+    "Circumstances Leading to Partition 1947","Congress Acceptance of Partition",
+    "Muslim League Concessions by Congress","West Bengal vs Punjab Refugee Rehabilitation",
+    "British Granting Independence: Analysis","Integration of Princely States: Patel",
+    "Junagadh Hyderabad Kashmir Integration","Political Mobilisation in Princely States",
+    "Colonialism: Economic Social Political Impact","Forms of Resistance to Colonial Rule",
+    "India Consolidation: Polity Economy Education IR","States Reorganisation Process",
+    "Administrative Issues in Princely States Integration","Linguistic States and Indian Unity",
+    "Formation of New States: Benefits","Tashkent Agreement 1966",
+    "Bangladesh Emergence: India Role","Emergency 1975: Necessity and Lessons",
+    "Maulana Abul Kalam Azad Contributions"
+  ],
+  "GS1: Modern History|||British Reforms": [
+    "Government of India Act 1909","Montague Statement 1917","Government of India Act 1935",
+    "Formation of Congress Ministries","Tripuri Session 1939","August Offer",
+    "Post-Independence Consolidation","Re-organisation and Integration of States",
+    "Linguistic Regionalism in India","Ambedkar Movement","Constitutional Provisions for SC-ST",
+    "Government of India Act 1935 and Constituent Assembly","Nehru Report 1928: Compromises",
+    "Administrative and Military Reforms after 1857","Dalhousie Policies and 1857 Revolt",
+    "Government of India Act 1919: Radical Changes","GoI Act 1919 and Nationalist Response",
+    "Indian Councils Act 1892 and Imperial Legislative Council","Marathas vs British Expansion"
+  ],
+  "GS1: Modern History|||Tribal Movements": [
+    "Tribal Movements British Period","Tribal Issues and Policy","Tribal Policy Consolidation",
+    "Bhagwan Birsa Munda","Alluri Sitarama Raju",
+    "Colonial Rule Impact on Tribals","Tribal Response to Colonial Oppression",
+    "Tribal Unrest in British India: Causes and Limited Success",
+    "Peasant Movements: 19th vs 20th Century","Peasant and Tribal Movements as National Struggle",
+    "Women in Freedom Struggle: Sacrifice and Bravery"
+  ],
+  "GS1: Modern History|||Socio-Religious Reforms": [
+    "Indian Renaissance","Brahmo Samaj","Ramakrishna Mission","Arya Samaj",
+    "Socio-Religious Reform Movements 19th Century","Raja Ram Mohan Roy",
+    "Dayanand Saraswati","Ranade","Vivekananda","Sri Aurobindo","Rabindranath Tagore",
+    "Sir Syed Ahmed Khan","Sree Narayan Guru",
+    "Young Bengal Movement","Women Question in 19th Century",
+    "Jotirao Phule and Subaltern Reform","Vinoba Bhave: Bhoodan Gramdan",
+    "Socio-Religious Reforms and Nationalist Movement",
+    "Pre-Independence Women Movements Led by Men",
+    "Post-Independence Women-Led Socio-Economic Movements",
+    "Indian vs Western Model of Secularism"
+  ],
+  "GS1: Society & World History|||World Wars": [
+    "Causes of World War I","Course of World War I","Consequences of WWI",
+    "League of Nations","Inter-War Years 1919-1939","Great Depression",
+    "Rise of Fascism in Italy","Rise of Nazism in Germany",
+    "Causes of World War II","Course of World War II","Aftermath of WWII",
+    "WWI: Bismarck System of Alliances","African Colonial Experience",
+    "US-USSR in Vietnam and Afghanistan","Indo-China War 1962: Causes",
+    "USSR Collapse: Internal and External Factors",
+    "Industrial Revolution: Why Britain First","Democracy and Rule of Law in Industrial Revolution",
+    "New Deal and Great Depression","Appeasement Policy and WWII",
+    "French Revolution: Beacon of Light but Failed France",
+    "Vietnam War: Anti-Colonial to Capitalist Humiliation",
+    "Spanish Civil War as Opening Act of WWII","Axis Powers Formation 1930s",
+    "WWI: Balance of Power Argument","Railways and Socio-Economic Effects World",
+    "Challenge to Democratic State System Inter-War Years",
+    "Decolonisation in Malay Peninsula","Anti-Colonial Struggle West Africa",
+    "Industrial Revolution: Quality of Life in Britain vs India",
+    "Germany and Responsibility for Two World Wars",
+    "Suez Crisis 1956 and British Power","Lenin New Economic Policy and India",
+    "Japan Latecomer Industrial Revolution","Africa: States Created by European Competition",
+    "American Revolution as Economic Revolt","Containing Great Depression: Policy Instruments",
+    "French Revolution: Enduring Contemporary Relevance"
+  ],
+  "GS1: Society & World History|||Decolonisation": [
+    "Decolonisation Phase","Development in Middle East","Arab Nationalism",
+    "Israel-Palestine Conflict","African Decolonisation","India Independence",
+    "African Decolonisation: Paper Partition to Delayed Decolonisation",
+    "Decolonisation in Malay Peninsula","West African Anti-Colonial Struggle"
+  ],
+  "GS1: Society & World History|||Cold War": [
+    "Cold War Origins","Development of Cold War 1945-1953","Nuclear Arms Race",
+    "Cuban Missile Crisis","Post Cold War World","Global Issues since 1991",
+    "Integration of Europe","Rise of Global Islamic Terrorism","Rise of China",
+    "Cold War: Present Afghan Crisis Linkage","USSR Collapse and Cold War End",
+    "Vietnam War and Cold War Blocs","Post Cold War Sovereign Nationalism"
+  ],
+  "GS2: Polity & Governance|||Constitution": [
+    "Historical Evolution of Constitution","Constituent Assembly","Preamble","Citizenship",
+    "Fundamental Rights","DPSP","Fundamental Duties","Basic Structure Doctrine",
+    "Separation of Powers","Judicial Review","Comparison with USA UK France",
+    "Writs and Their Uses","Article 370 Supreme Court Verdict","Words Socialist and Secular",
+    "CAA Citizenship Amendment Act","Uniform Civil Code","Criminal Law Reforms",
+    "Freedom of Religion: Not Absolute","103rd Amendment and EWS Reservation",
+    "69th Amendment and Delhi LG Conflict","Doctrine of Pleasure",
+    "British Monarch vs Indian President","Delimitation Process",
+    "Representation of People Act Disputes","Indianisation of Criminal Justice System",
+    "Basic Structure Doctrine: Criticism and Confusion","Sedition Law and Civil Liberties",
+    "Preamble as Constitutional Philosophy","Doctrine of Essentiality",
+    "Tenth Schedule: Intent vs Impact","Death Penalty and Governor Pardon",
+    "RTI Act: Implementation Issues","Bureaucracy and Perpetuation of Old Order",
+    "Lokpal: Failure to Dismantle Corruption","Fundamental Duties Importance",
+    "Concurrent List Utility","Governor Discretionary Powers",
+    "Parliamentary Deliberation Decline","Seventh Schedule Doctrine of Pith and Substance",
+    "Freedom of Speech: Restrictions and Limitations","CAG Role and Reinvention",
+    "Pressure Groups and Public Policy","Civil Services Independence and Interference",
+    "Section 295A and 153A IPC","India vs Sri Lanka Political Systems",
+    "Reservations and Caste Census","Affirmative Action Success",
+    "Criminalisation of Politics","UAPA and Democratic Rights",
+    "Women in Local Bodies and Legislatures","Ordinance Making Power",
+    "Electoral Bond as Reform","Fundamental Duties and DPSP Non-Enforceability",
+    "Hate Speech and Freedom of Expression","Collegium System Case Laws",
+    "Separation of Powers: Indian Model","Speaker: India vs Britain",
+    "First Past the Post vs Proportional Representation","Parliamentary vs Presidential Form",
+    "Representation of People Act Shortcomings","Water Diplomacy and Indus Water Treaty",
+    "Independent Judiciary and Executive Encroachment","Enforcement Directorate Controversies",
+    "Political Parties and Democratisation","SC-ST Prevention of Atrocities Act",
+    "Civil Society: Resurgence and Role","Criminal Justice: Process as Punishment",
+    "Persons with Disability and Political Participation","Electoral Reform: Funding Remote Voting RUPPs",
+    "Judicial Accountability and Independence","PRIs and SDGs",
+    "Ayushman Bharat and Right to Health","MGNREGA Performance",
+    "National Commission for Women","National Multidimensional Poverty Index",
+    "Jal Jeevan Mission","NCST and Tribal Voice","Data Sharing in Public Sector",
+    "SHGs and Women Empowerment","Investigative Agencies Umbrella Body",
+    "Cooperative Model and Rural Growth","PM PVTG Development Mission",
+    "Subsidies as Populist Tool","Capital Punishment Controversies",
+    "Inter-State River Water Disputes Act","Constitutional Morality",
+    "Parliament Amending Power Limitations","Collegium System: India vs USA",
+    "Centre-State Financial Relations and Fiscal Federalism",
+    "Lok Adalats vs Arbitration Tribunals","Right to Privacy and Article 21",
+    "India as Secular State vs USA Secularism","One Nation One Election",
+    "Public Examination Prevention of Unfair Means Act 2024","PIL and Supreme Court Power",
+    "Free Legal Aid and NALSA","Urban Local Bodies: States Reluctance",
+    "British vs Indian Parliamentary Sovereignty","Presiding Officers of State Legislatures",
+    "Constitution as Living Instrument: Right to Life Expansion","Gender Justice Constitutional Provisions",
+    "Article 356: Reduced Frequency","101st Amendment and GST Federalism Spirit",
+    "Parliamentary Committee System Financial Committees","Constitutionalisation of Environmental Problems",
+    "Right to Movement and Residence","Vice President as Rajya Sabha Chairman",
+    "National Commission for Backward Classes Constitutional Body",
+    "Governor Ordinance Power and Legality","National Political Parties vs Regional Parties",
+    "Election of Presidents: India vs France","Election Commission and Model Code of Conduct",
+    "Constitutional Morality and Judicial Decisions","Women in Higher Judiciary",
+    "14th Finance Commission and State Fiscal Position","Parliamentary Accountability of Executive",
+    "CBI Jurisdiction in States","Human Rights Commissions Limitations",
+    "Right to Equality: USA vs India","Legislative Councils Status",
+    "Parliamentary Standing Committees","RTI Amendments and Information Commission Autonomy",
+    "Cooperative Federalism: Cooperation Competition Confrontation","India vs UK Judicial Systems",
+    "Speaker: Once a Speaker Always a Speaker","Indian Constitution Centralising Tendencies",
+    "Judicial Legislation and Separation of Powers","Local Institutions: Functionality Challenges",
+    "Rajya Sabha Transformation","Constitutionalising National Commission for Women",
+    "EVMs and Election Commission Trustworthiness","NCSC and Religious Minority Institutions",
+    "Financial Emergency Proclamation","Parliamentary Committees: Estimates Committee",
+    "CAG Appointment and Powers","Delhi LG vs Elected Government",
+    "Tribunals and Ordinary Courts Jurisdiction","India vs USA Political Systems",
+    "Finance Commission Constitution and Terms","Panchayat System and Alternative Financing",
+    "Multiplicity of Commissions: Umbrella NHRC","Judicial Appointment NJAC Judgment",
+    "Simultaneous Elections: Accountability vs Cost","Pressure Groups Formal vs Informal",
+    "GST 101st Amendment: Cascading Tax","Right to Privacy: Supreme Court Judgment",
+    "Joint Session of Parliament Occasions","Electoral Reforms ECI 2016 Proposals",
+    "Article 370: Temporary Provision","Indian Party System Transition",
+    "CAG and Policy Audit Overstepping","Preamble Adjectives Defence",
+    "Coelho Case and Basic Structure","GoI Act 1935 Federal Constitution",
+    "Quasi-Judicial Bodies","Uniform Civil Code Impediments","Cooperative Federalism Drawbacks",
+    "Panchayats as Political not Governance Institutions","Khap Panchayats and Human Rights",
+    "Ordinance Power and Separation of Powers","Arbitration and Conciliation Act Changes",
+    "Right to Clean Environment and Diwali Crackers","Judicial Activism and Democracy",
+    "Indian Federalism: Strong Centre Feature","Parliamentary Privileges Article 105",
+    "Freedom of Speech and Hate Speech","President Commuting Death Sentences",
+    "NHRC Complement to Judiciary","Anti-Defection Law and MPs Role",
+    "Section 66A IT Act and Article 19","Article 371A Naga Special Status",
+    "Supreme Court Check on Parliament Amendment Power","Inter-State Water Disputes Constitutional Mechanisms"
+  ],
+  "GS2: Polity & Governance|||Federalism": [
+    "Union of States vs Federation of States","Holding Together Federalism",
+    "Political Decentralisation without Devolution","Linguistic Reorganisation of States",
+    "Pressure Groups and Participatory Democracy","M-Governance and Welfare Programmes",
+    "Decentralisation: Structural Bottlenecks","Grassroots Democracy and Administrative Decentralisation",
+    "PRIs and SDGs","Multipolarity and Indo-Pacific Vision",
+    "e-Governance: Technology Bias vs User-Centric","Civil Society vs State Actor Debate",
+    "Environmental Pressure Groups","Decision-Making Proximity to Source",
+    "Local Bodies: Rural-Urban Merger","CAG Legality vs Propriety",
+    "Citizens Charter: Hindrances and Potential","e-Governance Interactive Service Model",
+    "Competition Commission India vs MNCs","e-Governance Inadequacies",
+    "Decentralisation and Governance Landscape","Gati-Shakti Yojana Coordination",
+    "Rights of Persons with Disabilities: Implementation","Direct Benefit Transfer Limitations",
+    "Business Associations and Public Policy","Digital Illiteracy and Socio-Economic Development",
+    "Civil Service Reforms and Democracy","Fourth Industrial Revolution and e-Governance",
+    "Policy Contradictions and Environment","e-Governance and Information Value",
+    "Citizens Charter Limitations","Public Accounts Committee Role",
+    "NCW Strategy and Women Problems","SHGs and State Withdrawal from Development",
+    "Poverty Alleviation Programmes and Political Will","Civil Services Drastic Reforms",
+    "Non-State Actors in Indian Governance","Demographic Dividend and Capacity Building",
+    "Government Effectiveness and People Participation","Transparency International and Public Morality",
+    "LPG Reforms Response","Traditional Bureaucracy and Socio-Economic Development",
+    "FCRA Changes and NGOs","SHG Bank Linkage Programme",
+    "NGOs and Environmental Protection","Satyam Scandal and Corporate Governance",
+    "Whistleblower Protection Act Amendment","Regulatory Institutions Independence",
+    "Cabinet Size and Government Efficacy","FDI in News Media",
+    "Rail Tariff Authority and Railway Reform","SHGs Socio-Cultural Hurdles",
+    "IITs IIMs Academic Independence","Cadre-Based Civil Services and Slow Change",
+    "Aadhaar and NPR: Developmental Potential","Smaller States and Effective Governance",
+    "13th Finance Commission and Local Government","SEBI IRDA Merger Case",
+    "SHGs Legitimacy and Accountability","Centrally Sponsored Schemes Restructuring",
+    "Electronic Cash Transfer and Corruption","PURA and Connectivity","Citizens Charter Improvement"
+  ],
+  "GS2: Polity & Governance|||Judiciary": [
+    "Supreme Court Jurisdiction","High Court Powers","Lower Judiciary","Judicial Review",
+    "PIL","Judicial Activism","Collegium System","NJAC Controversy",
+    "Judicial Accountability","National Court of Appeal","Virtual Courts",
+    "Tribunal and Subordinate Courts","Fast Track Courts","Gram Nyalayas",
+    "Lok Adalat","NALSA","Judicial Recusal Ethics","All India Judicial Services",
+    "Electoral Bonds Supreme Court","Supreme Court Case Burden","Women in Judiciary",
+    "Judiciary in Electoral Reforms","ECI Autonomy and Controversies",
+    "Social Media Intermediary Accountability","Independent Judiciary and Executive Encroachment",
+    "Enforcement Directorate Controversies","Fourth Estate and Press Freedom",
+    "Women in Electoral System","RPA 1951 and Model Code of Conduct",
+    "Electoral Reform: Funding and Political Parties","Judicial Accountability and Independence Balance",
+    "Collegium System Transparency","Slow Judiciary and Economic Reforms",
+    "Criminal Justice and Undertrial Incarceration","NGT Structural and Functional Issues",
+    "Investigative Agencies Umbrella Body"
+  ],
+  "GS2: Polity & Governance|||Elections": [
+    "Representation of People Act 1950 and 1951","Electoral Reforms",
+    "Criminalisation of Politics","State Funding of Elections","Electoral Bonds",
+    "Political Parties in India","Coalition Governments","Anti-Defection Measures",
+    "Election Commission Powers","Caste and Politics","Election and Technology",
+    "OBC Reservation in Local Bodies","Reservation in J&K",
+    "FPPS vs Proportional Representation","One Nation One Election",
+    "Remote Voting and RUPPs Regulation","Election Funding Transparency",
+    "Women Low Representation in Politics","ECI Independence and Reforms",
+    "Anti-Defection Law Issues","Electoral Bond as Reform"
+  ],
+  "GS2: Polity & Governance|||Governance": [
+    "Good Governance","e-Governance","Citizens Charters","Sevottam Framework",
+    "Transparency and Accountability","Social Audit","Whistleblowers","Anti-Corruption Machinery",
+    "Civil Services Role in Democracy","Lateral Entry in Civil Services",
+    "Pressure Groups","NGOs and Governance","SHGs and Microfinance",
+    "Constitutional Bodies: ECI UPSC CAG Finance Commission","SEBI CVC CBI",
+    "NITI Aayog","NHRC","Lokpal and Lokayukta","CAG Role",
+    "Local Government: 73rd and 74th Amendment","Panchayati Raj","Smart Cities",
+    "Decentralisation and Delegation","Social Media and Governance",
+    "Performance Appraisal Civil Services","Cadre Policy",
+    "Public Sector Data and Innovation","SHGs Social Entrepreneurship",
+    "Welfare Schemes: Participation and Accountability","Subsidies and Populism",
+    "NGO-State Alliance for Social Change","NGO Regulation Need",
+    "Healthcare Disparity: Private vs Government","Urban Planning and Local Governance",
+    "Global Hunger Index India","Marital Rape Criminalisation",
+    "Indian Universities and Global Rankings","G20 Presidency and Global Order",
+    "Multidimensional Poverty Index NITI Aayog","National Commission for Women",
+    "Jal Jeevan Mission Challenges","SC-ST Atrocities Act Implementation",
+    "PVTG Development Mission Welfare State","CSO Collaboration on Poverty and Malnutrition",
+    "Social Infrastructure and Developed India 2047","Ayushman Bharat and Right to Health",
+    "MGNREGA Urban Replication","Chronic Malnutrition Interventions",
+    "Civil Society Professionalization and Democracy","Non-Personal Data Governance",
+    "Epidemic Control and Management Law","Consumer Protection E-Commerce Rules",
+    "Tourism as Growth Engine and COVID Impact","Investment Infrastructure and Safety",
+    "Begging Criminalisation and Welfare Measures","Poverty Undernutrition Vicious Cycle",
+    "Doctrine of Civil Services Integrity"
+  ],
+  "GS2: Polity & Governance|||International Relations": [
+    "Indian Foreign Policy Determinants","Non-Aligned Movement","Panchsheel",
+    "India Nuclear Doctrine","Neighbourhood First Policy","Act East Policy",
+    "Indian Diaspora","India-Nepal Relations","India-Bhutan Relations","India-Bangladesh Relations",
+    "India-Sri Lanka Relations","India-Myanmar Relations","Indo-Pak Relations",
+    "India-China Relations","India-Russia Relations","India-USA Relations",
+    "India-Middle East Relations","India-ASEAN Relations","India-Africa Relations",
+    "India-Australia Relations","India-France Relations","India-UK Relations",
+    "Quad and Indo-Pacific","BRICS","SAARC","BIMSTEC","SCO","WTO and India",
+    "IMF and World Bank","UN and India","UNSC Reform and G4","South China Sea",
+    "Indian Ocean Security","Chabahar Port","BRI and India","G20 and India",
+    "India-Middle East-Europe Corridor","Gujral Doctrine","String of Pearls",
+    "FATF and Terrorism Financing","Nuclear Security Summit","NSG Membership India",
+    "India Ukraine Crisis: Strategic Autonomy","IPEF: Indo-Pacific Economic Framework",
+    "India Foreign Policy Principles and Objectives","SCO and Peaceful Asia",
+    "Chinese Debt-Trap Diplomacy","India and Portuguese Colonial Removal",
+    "English vs French East India Company","India-Africa: Inclusive Sustainable Order",
+    "Indo-Pacific: ASEAN Centrality and Rules-Based Order","West Asia Diplomacy and India",
+    "Soft Power vs Hard Power","India-West Asia Depth and Diversity",
+    "UN Second Decade Collective Failure","ASEAN and India Northeast Gateway",
+    "BRICS: Reformed Multilateralism vs Internal Contradictions",
+    "BIMSTEC vs SAARC: Bridge not Replacement","I2U2 vs Quad Comparison",
+    "India-China: Cooperation Competition Reshape",
+    "WTO: Developed vs Developing Divergence and G20 Role",
+    "Outer Space Policy India","Indian Diaspora in West Asia and Africa",
+    "China-Russia Strategic Interest","AUKUS and Indo-Pacific",
+    "WHO and Global Health Security COVID","India-Israel Relations",
+    "Central Asia and India","WTO Reforms and Trade War",
+    "US-Iran Nuclear Deal and India","China Military Power via Economic Relations",
+    "ECOSOC and Functional Commissions","India Energy Policy West Asia",
+    "Look East Policy and Post Cold War","SAARC and Pakistan Interference",
+    "India-Africa: Increasing Interest","India UNSC Permanent Seat",
+    "Project Mausam Foreign Policy","India-Pakistan Soft Power Sports Culture",
+    "South China Sea Bilateral India-China Issues","ITA and India Interests",
+    "New Development Bank and AIIB","WTO and Food Security India",
+    "ISAF Afghanistan Withdrawal and India","String of Pearls and India Response",
+    "India-Japan Economic Ties Constraints","Shahbag Protests and India",
+    "Maldives Political Developments","India-Sri Lanka Domestic-Foreign Policy Link",
+    "Gujral Doctrine Relevance","World Bank vs IMF Role",
+    "India-Africa Digital Partnership","West Fostering India vs China Supply Chain",
+    "India Central Asian Republics Relations","Maldives Geopolitical Importance for India",
+    "UN Security Council Counter-Terrorism Committee","SCO Virus of Conflict and India Role",
+    "Indian Diaspora in West: Economic Political Benefits","NATO Expansion and India",
+    "IMO and Maritime Safety Environment","India-Sri Lanka Role in Recent Crisis",
+    "BIMSTEC vs SAARC Similarities Dissimilarities","I2U2 and India Global Politics",
+    "India Climate Policy in International Fora","India in Africa Next Growth Story",
+    "USA vs China Existential Threat","SCO Aims and India Importance",
+    "Quad Transformation Trade vs Military","Indo-US vs Indo-Russia Defence Deals",
+    "Russia Far East and India Interest","India Energy Security and Middle East",
+    "India-Africa Economic Space","SAARC Future and Pakistan","McBride Commission UNESCO",
+    "Ashgabat Agreement 2018 and India","UN Reform East-West Confrontation"
+  ],
+  "GS1: Geography|||Geomorphology": [
+    "Interior of the Earth","Seismic Waves","Plate Tectonics","Continental Drift Theory",
+    "Rocks and Rock Cycle","Earthquakes","Volcanoes","Tsunami Mechanism",
+    "Geomorphic Processes","Exogenic and Endogenic Forces","Weathering",
+    "Mass Movements","Landforms: Rivers and Lakes","Glacial Landforms",
+    "Wind Erosion Landforms","Karst Topography","Coastal Landforms",
+    "Mountains: Fold Block Volcanic","Plateaus","Pacific Ring of Fire",
+    "Subaerial Volcanic Eruption","Supervolcanoes","Geomagnetic Storm and Auroras",
+    "Plate Tectonics and Volcano Location","Earthquake Types and Factors",
+    "Landslides: Causes and Impact","Flood Management India",
+    "Continental Shelf: Resource and Ecology","Submarine Canyons vs Ocean Trenches",
+    "Earth Internal Structure and Seismic Waves","Fold Mountains and Earthquake Distribution",
+    "Indonesian and Philippines Archipelagos Formation","Geoheritage",
+    "Circum-Pacific Zone Geophysical Characteristics","Desertification Beyond Climate Boundaries",
+    "Himalayan Landslides vs Western Ghats Landslides","Flash Flood vs Flood",
+    "Cloudbursts in Hilly Regions","Twisters and Gulf of Mexico",
+    "Africa Rift Valley and New Ocean Basin","Mantle Plume and Plate Tectonics",
+    "Tectonic Movements: Continent and Ocean Basin Changes"
+  ],
+  "GS1: Geography|||Climatology": [
+    "Composition of Atmosphere","Structure of Atmosphere","Solar Radiation and Heat Balance",
+    "Temperature Distribution","Atmospheric Pressure and Wind","General Circulation of Atmosphere",
+    "Monsoon Mechanism","Tropical Cyclone","Temperate Cyclones","Jet Streams",
+    "El Nino and La Nina","World Climate Types","Air Masses and Fronts",
+    "Precipitation Types","Polar Vortex","Atmospheric River","Heat Waves and Anticyclones",
+    "Indian Ocean Warming","Indian Ocean Dipole","Western Disturbances",
+    "Cyclones of Bay of Bengal","El Nino and Indian Monsoon",
+    "Tropical vs Temperate Cyclones","Atmospheric Composition since Industrial Revolution",
+    "Sea Level Rise: Causes and Consequences","Heat Waves: Impacts and Management",
+    "Temperature Inversion: Types","Marine Heat Waves: Multidimensional Impacts",
+    "India Arctic Policy and Geopolitical Significance","Western Ghats vs Eastern Ghats Rainfall",
+    "Monsoon Complexity and Agriculture","Jet Streams and Indian Monsoon",
+    "South-West Monsoon as Purvaiya in Bhojpur","Climate Resilient Cities",
+    "Urban Heat Island","Sea Surface Temperature and Tropical Cyclones",
+    "El Nino Impact on Indian Agriculture","Monsoon and Humanizing Landscapes",
+    "Upwelling: Causes and Socio-Economic Impact","Island Nations and Sea Level Rise",
+    "Polar Vortex Impact on Indian Climate","Colour-Coded Weather Warnings"
+  ],
+  "GS1: Geography|||Oceanography": [
+    "Relief of Ocean Floor","Ocean Temperature","Ocean Salinity","Ocean Currents",
+    "Tides","Waves","UNCLOS","Territorial Waters and EEZ",
+    "Ocean Deposits and Minerals","Deep Ocean Mission","Atlantic Meridional Overturning Circulation",
+    "Marine Heatwaves","Mid-Oceanic Ridges","Sea Swells","Rip Currents","Oceanic Nino Index",
+    "Ocean Current Circulation and Atmospheric Circulation","Ocean Currents and Fishing Industry",
+    "Ocean Currents: Influence on Climate Navigation Fishing","Oceanic Salinity Variations",
+    "Coral Reef Formation: Conditions and Destruction","Coral Bleaching and Disease",
+    "Dead Zones and Marine Ecosystems","Mangroves: Significance and Threats",
+    "Sundarbans Depletion and Conservation","Wetlands: Importance and Threats",
+    "Healthy River Ecosystem Conservation","Continental Shelf Resource Potential",
+    "Maritime Borders vs Territorial Borders","Maritime Boundary Vulnerabilities",
+    "Offshore vs Onshore Oil Reserves","Resources of Oceans: Crisis Solution",
+    "Blue Revolution and Pisciculture"
+  ],
+  "GS1: Geography|||Biogeography": [
+    "Soil Formation and Classification","Soil Erosion and Conservation",
+    "Types of Natural Vegetation","Forest Types and Conservation","Grasslands",
+    "Desert Vegetation","Tundra","Biomes Overview","Deforestation Causes and Impact",
+    "Reforestation and Afforestation","Social Forestry","Agro-forestry","Miyawaki Method",
+    "Natural Vegetation Diversity in India","Wildlife Sanctuaries in Rainforests",
+    "Forest Resources of India and Climate Change","India as Subcontinent",
+    "Mountain Ranges Alignment and Weather","Deccan Trap Natural Resources",
+    "Primary Rocks: Types and Characteristics","Rubber Producing Countries and Environment",
+    "Shrinking Lakes and Rivers India","Himalayan Glaciers and Water Resources",
+    "Arctic Ice vs Antarctic Glaciers: Different Effects","Cryosphere and Global Climate"
+  ],
+  "GS1: Geography|||Human Geography": [
+    "Physiography of India","Drainage System of India","Climate of India",
+    "Soils in India","Natural Vegetation of India","Population Distribution",
+    "Demographic Transition Theory","Urbanisation in India","Urban Issues",
+    "Migration: Push and Pull Factors","Rural Settlements","Census and Demography",
+    "Indian Demography Largest Youngest","Urban Flooding","Illegal Migration",
+    "Surge in Settlements in Flood-Prone Areas","Low Human Development India",
+    "Climate Change and North-South Divide","Population Composition India",
+    "Urbanisation and Land Use Patterns","Smart Cities Programme",
+    "MRTS and Urban-Rural Development","Urban Fires and National Building Code",
+    "Aspirational Districts and Blocks","Urban Poverty and Smart City",
+    "IT Cities: Employment and Problems","Cities as Economic Powerhouses",
+    "Unplanned Urbanisation and Fire Safety","Urbanisation and Segregation",
+    "Why Large Cities Attract More Migrants","Rural-Urban Integration",
+    "Demographic Winter Concept","Population Composition vs Size",
+    "Legal Age of Marriage for Women and Population","India as Net Food Exporter",
+    "Human Development Lagging Behind Economic Development",
+    "Non-Farm Primary Activities and Physiography",
+    "AI Drones GIS and RS in Spatial Planning","Ganga River Basin Population Distribution",
+    "Groundwater Decline in Gangetic Valley","Freshwater Scarcity Despite Resources",
+    "Water-Related Disasters and Resilience","River Interlinking and Flood Management",
+    "Inland Water Transport: Problems and Prospects","Micro-Watershed Development",
+    "Iron and Steel Industry Location Shift","Sugar Industry Location Shift",
+    "Cotton Textile Industry: Bombay and Dispersion","Cement Industry Location and Vindhya Range",
+    "Petroleum Refinery Location in Developing Countries","Petroleum and Natural Gas Distribution India",
+    "Wind Energy Potential and Spatial Spread","Solar Energy India: Regional Variations",
+    "Shale Oil and Gas in India","Coal Mining and Development",
+    "India Mineral Oil Distribution","Iron and Steel Spatial Pattern",
+    "Industrial Corridors in India","Green Revolution By-passing Eastern Region",
+    "Tea Gardens: Darjeeling vs Other Himalayas","Pulses Cultivation Advantages",
+    "Stubble Burning and Air Pollution Delhi-NCR",
+    "Straits and Isthmus in International Trade","South China Sea Geopolitical Significance",
+    "Indus Water Treaty: Ecological Economic Political","India and Africa Economic Space",
+    "Arctic Region: India Interest and Geopolitics","India Arctic Policy Pillars",
+    "IRNSS Navigation System","Hot Deserts Location 20-30N Western Continents",
+    "Fjords Formation","Troposphere and Weather Processes","Upwelling Causes and Regions",
+    "Soil Conservation and Land Management","Reclamation of Water Bodies into Urban Land"
+  ],
+  "GS3: Economy, Env & Security|||Economic Growth": [
+    "GDP GNP NDP NNP","Economic Growth vs Development","Planning History India",
+    "Nehruvian Socialist Economy","Economic Reforms 1991","LPG Reforms",
+    "Fiscal Policy","Monetary Policy","Budget and Economic Survey",
+    "Taxation in India","GST Progress","Investment Models","PPP",
+    "Financial Inclusion","PMJDY","Inclusive Growth","Inequality and Growth",
+    "India Manufacturing Landscape","Critical Minerals Economic Significance",
+    "India Demographic Advantage","India Energy Security","Gig Economy",
+    "India Space Economy","Fintech Sector","Digital Public Infrastructure",
+    "India Unorganised Sector","Global Debt Crisis","De-dollarisation","Red Sea Crisis"
+  ],
+  "GS3: Economy, Env & Security|||Banking": [
+    "Reserve Bank of India","Commercial Banks","Cooperative Banks","Regional Rural Banks",
+    "Small Finance Banks","Payment Banks","NBFC","Financial Inclusion",
+    "NPA Problem","Bad Banks","Bank Privatisation","Account Aggregator System",
+    "Insurance Sector","MUDRA Bank","Neo Bank","Banking Sector Reforms",
+    "Narasimhan Committee","Development Finance Institutions","RBI Liquidity Management",
+    "RBI Gold Reserve","Cryptocurrency Regulation","Central Bank Digital Currency",
+    "Surplus Liquidity in Banking","RBI Surplus Transfer","Disinvestment"
+  ],
+  "GS3: Economy, Env & Security|||Agriculture": [
+    "Role of Agriculture in India","Cropping Patterns","Farm Subsidies","MSP",
+    "Public Distribution System","Land Reforms","Land Degradation","Agricultural Finance",
+    "NABARD","Kisan Credit Card","Crop Insurance","PMFBY",
+    "Agricultural Marketing","APMC Act","e-NAM","Green Revolution",
+    "White Revolution","Blue Revolution","Food Processing","Agricultural Revolutions",
+    "AI and Agriculture","E-technology in Agriculture","MSP Revision Needed",
+    "Punjab Haryana Role in Food Security","Agricultural Subsidies India",
+    "Climate Change and Agriculture","Primary Agricultural Societies"
+  ],
+  "GS3: Economy, Env & Security|||Science & Technology": [
+    "Atomic Structure and Chemistry","Metals and Non-Metals","Biomolecules and Vitamins",
+    "Laws in Physics","Electromagnetic Spectrum","Universe and Cosmology",
+    "Big Bang Theory","Dark Matter and Energy","Gravitational Waves",
+    "Biology: Classification of Life","Genetics and DNA","Cell Structure and Division",
+    "Human Physiology","Immune System","Biotechnology Overview","Genetic Engineering",
+    "GM Crops","Gene Editing CRISPR","CAR T-Cell Therapy","Stem Cells",
+    "Space Technology","ISRO Missions","Chandrayaan-3","Aditya L1","Gaganyaan",
+    "NavIC Applications","Private Sector in Space","Missile Systems","Defence Technology",
+    "Drone Technology","Stealth Technology","Hypersonic Technology","Cyber Warfare",
+    "Nuclear Energy","Nuclear Policy of India","Nuclear Reactor","Nanotechnology",
+    "Quantum Computing","Robotics and AI","Machine Learning","Internet of Things",
+    "5G Technology","Facial Recognition Technology","Deepfakes","Dark Web",
+    "IPR in India","CSIR","Science Policy India","India Global Science Collaboration",
+    "Nano Urea","Room Temperature Superconductivity","mRNA Technology",
+    "Human Genome Sequencing","Nobel Prizes 2023",
+    "Nanotechnology Applications Agriculture","AI Governance and Challenges",
+    "Generative AI Ethics and Policy","5G Transformative Applications",
+    "Non-Fungible Tokens NFT","National Biotechnology Development Strategy 2021-25",
+    "DPI Exclusion Exploitation Monopolisation","National Research Foundation Bill 2023",
+    "Chandrayaan-3 vs Chandrayaan-2 Artemis Accords","Nuclear Fusion vs Fission",
+    "Renewable Energy Government Initiatives","Coal Phase-Down Not Phase-Out",
+    "Anti-Microbial Resistance India","GM Crops Facts and Fears",
+    "National Biofuel Policy Ethanol Blending","Digital Personal Data Protection Bill",
+    "Digital Disruptive Technologies","Nanotechnology Socio-Economic Relevance",
+    "AMR One Health Approach","Outer Space Policy India Defensive Offensive",
+    "Lithium Availability and Electric Mobility","Scientific Social Responsibility",
+    "Genome Sequencing Pandemic Control","GM Organisms Advantages vs Risks",
+    "Fuel Cell vs Battery Electric Vehicles","Semiconductor Geopolitical Significance",
+    "IPR Monopolies vs Innovation","Green Hydrogen Barriers and Future",
+    "AI for Improving Quality of Life","AI Clinical Diagnosis Privacy",
+    "NISAR Mission Climate Hazards","Space Based Technologies and Development",
+    "Fusion Energy ITER India","Clean Technology Energy Independence 2047",
+    "Nanotechnology Farmers Upliftment","IPR Life Materials Patent Commercialisation",
+    "Asteroids Extinction Strategies","Electronic Toll Collection Technology",
+    "DPDP Act 2023","Microorganisms and Fuel Shortage",
+    "Chandrayaan-3 Third Moon Mission","Life Expectancy New Health Challenges",
+    "Cellulose Natural Processes","James Webb Space Telescope",
+    "Vaccine Development COVID-19","Blue LEDs Nobel Physics 2014",
+    "S-400 Air Defence","Biotechnology Applied Research",
+    "Science in Everyday Life Agriculture","COVID-19 Technology Management",
+    "Nanotechnology Health Sector","India Space Station Plans",
+    "Traditional Knowledge and Patents","Biotechnology and Farmers",
+    "Bose-Einstein Statistics","Biotechnology and Biopharma",
+    "Nuclear Energy Facts and Fears","Stem Cell Therapy",
+    "Nuclear Science Fast Breeder Reactor","Unmanned vs Manned Space Missions",
+    "India Space Science Socio-Economic","Nanotechnology Mission India",
+    "TKDL Traditional Knowledge","GPS IRNSS Standard Precision Positioning",
+    "Robots Prohibitive Labour","Cloud Hosting Security Government",
+    "Science Career vs Business India","Antibiotics Drug Resistance",
+    "IPR Copyright Patents Trade Secrets","Indian Patent Law Novartis Glivec",
+    "Fixed Dose Drug Combinations","UDRS Cricket Technology",
+    "Digital Signature","3D Printing Technology",
+    "FRP Composite Material Aviation","Run-of-River Hydroelectricity"
+  ],
+  "GS3: Economy, Env & Security|||Agriculture|||PYQ": [
+    "MSP Policy Remedy Mono-Cropping Climate","Legalising MSP Debate",
+    "Food Security vs Nutrition Security","FCI Reform and Food Management",
+    "Food Processing Bridging Sufficiency Nutrition","AgriStack Digital Farm Ecosystem",
+    "Precision Farming Solution and Impediments","Natural Farming and Food Security",
+    "PM PRANAM Soil Health","Fisheries Sector Coastal Development",
+    "WTO Fisheries Subsidies India","Primary Agricultural Credit Societies",
+    "Fertiliser Sector Reform","Mixed Farming and Livestock",
+    "Food Processing Farm-Industry Linkage","Horticulture Sector Challenges",
+    "Blue Economy PMMSY","Oil Palm NMEO-OP","Land Reforms Agricultural Productivity",
+    "Farmer Producer Organisations","Agribusiness Agricultural Marketing Reform",
+    "Atmanirbhar Bharat Doubling Farmer Income","Farm Mechanisation Sustainability",
+    "Food Processing Disguised Unemployment","India Second Largest Fish Producer",
+    "Millets Adoption Barriers","Food Insecurity Despite Rising Income",
+    "Apiculture Agricultural Development"
+  ],
+  "GS3: Economy, Env & Security|||Environment|||PYQ": [
+    "Coastal Erosion Sea Incursion","EIA as Regulatory Hurdle",
+    "Ecotourism Fragile Areas","Stockholm Conference 50 Years",
+    "E-Waste Management Trinity","Run-of-River Hydroelectric Ecology vs Development",
+    "Climate Change Hydrological Cycle","Landslides NDMA Guidelines",
+    "Arabian Sea Cyclones Frequency","Heat Waves Causes Impacts",
+    "Sendai Framework DRR","Lithium Reserves India Socio-Ecological",
+    "Technology in Disaster Management","Loss and Damage Climate Equity",
+    "Avalanches NDMA Mitigation","LiFE Mission Lifestyle Environment",
+    "Flood Risk Profile India","Groundwater Visibility Climate Resilience",
+    "Single-Use Plastic Ban","Post-Independence Environmental Movement",
+    "Oceanic Temperature Variations","Solar Power Climate Change Agriculture",
+    "Climate Resilient Cities","Cities Carbon Neutrality Climate Vulnerability",
+    "Project Cheetah Fauna Reintroduction","Wetlands India Ecological Imbalance",
+    "Man-Animal Conflict Harmonious Coexistence","Global Biodiversity Outlook",
+    "Climate Finance Global Goals","DRR Constraints Robust Strategy",
+    "Disaster Policy Practice Gap India","Climate Change Marginalised Sections",
+    "Urban Fires National Building Code","Mangrove Ecosystem Services",
+    "IPCC Sixth Assessment Net-Zero India","Land Use Pattern Change India",
+    "Urban vs Rural Flooding","Climate-Smart Agriculture Adoption",
+    "Circular Economy Environmental Footprint","Green Hydrogen Economy"
+  ],
+  "GS3: Economy, Env & Security|||Internal Security|||PYQ": [
+    "Police Reforms 21st Century","PMLA Money Laundering Effectiveness",
+    "Hybrid Militants OGWs J&K","Human Trafficking Drug Trafficking Nexus",
+    "Integrated Theatre Command CDS","Asymmetric Threats Counter Measures",
+    "Vibrant Village Programme","National Security Strategy",
+    "Infiltration Incursion Insurgency Border","Hybrid Warfare India",
+    "Internal Security Neighbouring Countries Peace","Development and Militancy J&K",
+    "Organised Crime Mutations","Article 370 Kashmir Peace",
+    "CDS Theaterisation Impediments","Organised Crime Technology",
+    "Agnipath Scheme","AFSPA Utility","Fake News Internal Security",
+    "Border Security Forces Challenges","Cyberthreats Dual War",
+    "Border Management Personnel Process Technology",
+    "Defence Indigenisation Startups","Intelligence National Security",
+    "North-East Security Manipur","LWE Trend Strategy",
+    "Taliban Afghanistan India Security","Deep Net Dark Net",
+    "Drone Cyber Bio Technology Security","Terrorism India Manifestation",
+    "LWE Elimination 2026","North-East Peace Accords",
+    "Maritime Security Sea Trade","Narco-Terrorism Measures",
+    "India China Pakistan Border BADP BIM","Social Media Encrypted Security",
+    "Hearts and Minds J&K","UAVs Arms Drugs Border",
+    "Internal Security Intelligence Agencies","Terror Funding NMFT Conference",
+    "Naxalism Multilayered Strategy","Cyber Security National Strategy",
+    "Maritime Security Organisational Technical","Organised Crime Terrorist Linkages",
+    "External Non-State Actors Internal Security","Cross-Border Cyber Attacks",
+    "Money Laundering Technologies","Terrorism Complexity Causes",
+    "LWE Determinants Eastern India","Cyber Crimes Measures",
+    "Border Area Management","Myanmar Bangladesh Pakistan Border",
+    "OGWs Insurgency Neutralisation","Cyber Dome Project",
+    "India Myanmar Border","UAPA NIA Act Analysis",
+    "CPEC India Distancing","Drug Trafficking Gunrunning Linkage",
+    "Mob Violence Law and Order","North-East Insurgency",
+    "Hot Pursuit Surgical Strikes","LWE Corrective Strategy",
+    "Cyber Security Policy 2013","Radicalism Multi-Religious India",
+    "Illegal Transborder Migration","CPEC Security Threat",
+    "Fifth Schedule LWE Link","Porous Borders Internal Security"
+  ]
+};
+function getPool(paper, topic) {
+  const key = paper + '|||' + topic;
+  return SUBTOPICS[key] || [topic];
+}
+const filterScroll = document.getElementById('filter-scroll');
+Object.entries(FILTER_TOPICS).forEach(([paper, topics]) => {
+  const block = document.createElement('div');
+  block.className = 'paper-block';
+  const header = document.createElement('div');
+  header.className = 'paper-header';
+  const arrow = document.createElement('span');
+  arrow.className = 'paper-arrow';
+  arrow.textContent = '\u25b6';
+  const name = document.createElement('span');
+  name.className = 'paper-name';
+  name.textContent = paper;
+  header.append(arrow, name);
+  const list = document.createElement('div');
+  list.className = 'topic-list';
+  topics.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'topic-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.value = t; cb.dataset.paper = paper;
+    cb.id = 'cb_' + (paper + t).replace(/\W/g, '_');
+    const lbl = document.createElement('label');
+    lbl.htmlFor = cb.id; lbl.textContent = t;
+    row.append(cb, lbl);
+    list.appendChild(row);
+  });
+  header.addEventListener('click', () => {
+    const open = list.classList.toggle('open');
+    arrow.textContent = open ? '\u25bc' : '\u25b6';
+  });
+  block.append(header, list);
+  filterScroll.appendChild(block);
+});
+
+function renderMap(topics) {
+  const n = topics.length;
+  if (!n) return '';
+  const probe = document.createElement('span');
+  probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font-family:monospace;font-size:13px;line-height:1.5';
+  probe.textContent = 'M';
+  document.body.appendChild(probe);
+  const CW = probe.offsetWidth  || 7;
+  const CH = probe.offsetHeight || 17;
+  document.body.removeChild(probe);
+
+  const wrap = document.getElementById('map-wrap');
+  const bottom = document.getElementById('bottom');
+  const availW = wrap.clientWidth  - 24;
+  const availH = wrap.clientHeight - 12;
+  const maxC = Math.max(20, Math.floor(availW / CW));
+  const maxR = Math.max(10, Math.floor(availH / CH));
+
+  const maxLen = Math.max(...topics.map(t => t.length));
+  const BW = maxLen + 4;
+  const BH = 3;
+  const HGAP = 4;
+  const VGAP = 2;
+  const maxFitCols = Math.max(1, Math.floor((maxC + HGAP) / (BW + HGAP)));
+  const COLS = Math.min(maxFitCols, n);
+  const ROWS = Math.ceil(n / COLS);
+
+  const GW = COLS * (BW + HGAP) - HGAP;
+  const GH = ROWS * (BH + VGAP) - VGAP;
+  const W = Math.min(GW, maxC);
+  const H = Math.min(GH, maxR);
+  const g = Array.from({length: H}, () => Array(W).fill(' '));
+
+  const safe = (y, x, ch, onlyEmpty) => {
+    if (y < 0 || y >= H || x < 0 || x >= W) return;
+    if (onlyEmpty && g[y][x] !== ' ') return;
+    g[y][x] = ch;
+  };
+  const nodes = topics.map((t, i) => {
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const bx  = col * (BW + HGAP);
+    const by  = row * (BH + VGAP);
+    return { t, col, row, bx, by,
+      cx: bx + Math.floor(BW / 2),
+      rx: bx + BW,
+      bot: by + BH };
+  });
+  nodes.forEach(({ t, bx, by }) => {
+    const lbl = t.toUpperCase().padEnd(maxLen);
+    safe(by,   bx, '\u250c'); for(let c=1;c<BW-1;c++) safe(by,   bx+c, '\u2500'); safe(by,   bx+BW-1, '\u2510');
+    safe(by+1, bx, '\u2502'); safe(by+1, bx+1, ' ');
+    for(let c=0;c<maxLen;c++) safe(by+1, bx+2+c, lbl[c]);
+    safe(by+1, bx+2+maxLen, ' '); safe(by+1, bx+BW-1, '\u2502');
+    safe(by+2, bx, '\u2514'); for(let c=1;c<BW-1;c++) safe(by+2, bx+c, '\u2500'); safe(by+2, bx+BW-1, '\u2518');
+  });
+
+  const edges = [];
+  const hasIncoming = new Array(n).fill(false);
+
+  for (let i = 0; i < n - 1; i++) {
+    const cur = nodes[i];
+    const rightIdx = (cur.col + 1 < COLS && i + 1 < n && nodes[i+1].row === cur.row) ? i + 1 : -1;
+    const belowIdx = i + COLS < n ? i + COLS : -1;
+
+    let target;
+    if (rightIdx >= 0) {
+      target = rightIdx;
+    } else if (belowIdx >= 0) {
+      target = belowIdx;
+    } else {
+      continue;
+    }
+
+    const dir = (nodes[target].row === cur.row) ? 'right' : 'down';
+    edges.push([i, target, dir]);
+    hasIncoming[target] = true;
+    if (Math.random() < 0.25 && target + 1 < n) {
+      const skip = target + 1;
+      const skipDir = (nodes[skip].row === cur.row) ? 'right' : 'down';
+      edges.push([i, skip, skipDir]);
+      hasIncoming[skip] = true;
+    }
+  }
+  for (let i = 1; i < n; i++) {
+    if (!hasIncoming[i]) {
+      const prev = i - 1;
+      const dir = (nodes[i].row === nodes[prev].row) ? 'right' : 'down';
+      edges.push([prev, i, dir]);
+    }
+  }
+  edges.forEach(([si, ti, dir]) => {
+    const s = nodes[si], t = nodes[ti];
+    if (dir === 'right') {
+      const y = s.by + 1;
+      for (let x = s.rx; x < t.bx - 1; x++) safe(y, x, '\u2500', true);
+      safe(y, t.bx - 1, '>');
+    } else {
+      const x1 = s.cx;
+      const x2 = t.cx;
+      const yStart = s.bot;
+      const yEnd   = t.by - 1;
+      if (yEnd < yStart) return;
+
+      if (x1 === x2) {
+        for (let y = yStart; y < yEnd; y++) safe(y, x1, '\u2502', true);
+        safe(yEnd, x2, 'v');
+      } else {
+        const midY = Math.floor((yStart + yEnd) / 2);
+        const xd = x2 > x1 ? 1 : -1;
+        for (let y = yStart; y <= midY; y++) safe(y, x1, '\u2502', true);
+        const corner1 = xd > 0 ? '\u2514' : '\u2518';
+        safe(midY, x1, corner1);
+        for (let x = x1 + xd; x !== x2; x += xd) safe(midY, x, '\u2500', true);
+        const corner2 = xd > 0 ? '\u2510' : '\u250c';
+        safe(midY, x2, corner2);
+        for (let y = midY + 1; y < yEnd; y++) safe(y, x2, '\u2502', true);
+        safe(yEnd, x2, 'v');
+      }
+    }
+  });
+
+  return g.map(r => r.join('').trimEnd()).join('\n').trimEnd();
+}
+function generate() {
+  const allChecked = [...document.querySelectorAll('#filter-scroll input[type=checkbox][data-paper]:checked')];
+
+  if (!allChecked.length) {
+    document.getElementById('map-output').textContent = '(no topics selected)';
+    document.getElementById('bottom').innerHTML = '';
+    return;
+  }
+  const pool = [];
+  const poolPapers = [];
+  allChecked.forEach(cb => {
+    const subs = getPool(cb.dataset.paper, cb.value);
+    subs.forEach(s => { pool.push(s); poolPapers.push(cb.dataset.paper); });
+  });
+
+  const pct = parseInt(document.getElementById('density').value) / 100;
+  const count = Math.round(5 + pct * 15);
+
+  const tempPool = pool.map((t, i) => ({ t, p: poolPapers[i] }));
+  const selected = [], selectedPapers = [];
+  for (let i = 0; i < Math.min(count, tempPool.length); i++) {
+    const r = Math.floor(Math.random() * tempPool.length);
+    const item = tempPool.splice(r, 1)[0];
+    selected.push(item.t);
+    selectedPapers.push(item.p);
+  }
+
+  document.getElementById('map-output').textContent = renderMap(selected);
+  generateInstructions(selected, selectedPapers);
+}
+function generateInstructions(topics, papers) {
+  const n = topics.length;
+  const up = new Set(papers.filter(Boolean)).size;
+
+  let cx = n <= 5 && up <= 2 ? 1 : (n >= 12 || up >= 4) ? 3 : 2;
+  const timeMin = Math.min(45, [0,10,20,35][cx] + Math.floor(n/3));
+  const wMin = timeMin * 18, wMax = timeMin * 25;
+  const soc = topics.filter((t,i) => papers[i] === 'Sociology Optional');
+  const sh2 = cx===1 ? 'Single argument is fine.'
+    : cx===2 ? '2–3 sub-arguments, intro + conclusion.'
+    : 'Intro, 3+ paragraphs, conclusion. Depth over breadth.';
+
+  let i=1, html='';
+  html += '<b>INSTRUCTIONS</b> <small>('+n+' topics)</small><br>';
+  html += '<b>'+(i++)+'. Time:</b> '+timeMin+' min — no stopping, no editing.<br>';
+  html += '<b>'+(i++)+'. Length:</b> '+wMin+'–'+wMax+' words (estimate only).<br>';
+  html += '<b>'+(i++)+'. Structure:</b> '+sh2+'<br>';
+  if (soc.length) {
+    const p = soc[Math.floor(Math.random()*soc.length)];
+    html += '<b>'+(i++)+'. Sociology:</b> '+(cx>=2
+      ? 'Use <b>'+p+'</b> — cite a thinker or study, connect to another map topic.'
+      : 'One example from <b>'+p+'</b> — thinker or real case.')+'<br>';
+  }
+
+  document.getElementById('bottom').innerHTML = html;
+}
+
+document.getElementById('density').addEventListener('input', function() {
+  document.getElementById('density-label').textContent = this.value + '%';
+});
+
+window.addEventListener('resize', generate);
+generate();
+</script>
+</body>
+</html>
